@@ -18,7 +18,7 @@ const envSchema = z.object({
   // Phase 4: Notion OAuth
   NOTION_CLIENT_ID: z.string().optional(),
   NOTION_CLIENT_SECRET: z.string().optional(),
-  NOTION_REDIRECT_URI: z.string().optional(),
+  NOTION_REDIRECT_URI: z.string().default('http://localhost:3001/api/notion/callback'),
 });
 
 function loadEnv() {

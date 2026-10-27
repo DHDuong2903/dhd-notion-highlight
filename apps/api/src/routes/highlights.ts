@@ -2,6 +2,8 @@ import { FastifyPluginAsync } from 'fastify';
 import { prisma } from '../lib/prisma.js';
 import { canonicalizeUrl } from '../utils/url.js';
 import { requireAuth } from '../middleware/auth.js';
+import { decryptToken } from '../utils/crypto.js';
+import { NotionService } from '../services/notion.js';
 import { AppErrorCode, createHighlightSchema } from '@notion-highlight/shared';
 
 // Quota limits
@@ -41,6 +43,7 @@ export const highlightRoutes: FastifyPluginAsync = async (fastify) => {
         notionPageId: existing.source.notionPageId,
         isNewSource: false,
         isDuplicate: true,
+        status: existing.status,
         message: 'Highlight already saved (idempotent response)',
       });
     }
@@ -71,7 +74,7 @@ export const highlightRoutes: FastifyPluginAsync = async (fastify) => {
     const isNewSource = source === null;
 
     if (!source) {
-      // 5a. Create new source (Notion page will be created in Phase 4)
+      // 5a. Create new source
       source = await prisma.source.create({
         data: {
           userId: sessionUser.id,
@@ -82,7 +85,7 @@ export const highlightRoutes: FastifyPluginAsync = async (fastify) => {
       });
     }
 
-    // 6. Create Highlight record as PENDING
+    // 6. Create Highlight record
     const highlight = await prisma.highlight.create({
       data: {
         userId: sessionUser.id,
@@ -93,7 +96,94 @@ export const highlightRoutes: FastifyPluginAsync = async (fastify) => {
       },
     });
 
-    // 7. Log sync attempt (PENDING — Notion sync happens in Phase 4)
+    // 7. Check if user has connected Notion and selected a database
+    const connection = await prisma.notionConnection.findUnique({
+      where: { userId: sessionUser.id },
+    });
+
+    if (connection && connection.databaseId) {
+      try {
+        const token = decryptToken(connection.accessTokenEncrypted);
+        const notion = new NotionService({ auth: token });
+
+        let notionPageId = source.notionPageId;
+
+        if (!notionPageId) {
+          // Task P4-E3-T1: Create new Notion page
+          const created = await notion.createPage({
+            databaseId: connection.databaseId,
+            title: source.title,
+            url: source.canonicalUrl,
+            highlightText: text,
+          });
+
+          notionPageId = created.pageId;
+
+          // Update source with new Notion page ID
+          await prisma.source.update({
+            where: { id: source.id },
+            data: { notionPageId },
+          });
+        } else {
+          // Task P4-E3-T2: Append highlight to existing Notion page
+          await notion.appendHighlight(notionPageId, text);
+        }
+
+        // Update highlight status to SYNCED
+        await prisma.highlight.update({
+          where: { id: highlight.id },
+          data: { status: 'SYNCED' },
+        });
+
+        // Log successful sync
+        await prisma.syncLog.create({
+          data: {
+            userId: sessionUser.id,
+            highlightId: highlight.id,
+            status: 'SUCCESS',
+          },
+        });
+
+        return reply.status(200).send({
+          success: true,
+          highlightId: highlight.id,
+          sourceId: source.id,
+          notionPageId,
+          isNewSource,
+          status: 'SYNCED',
+          message: isNewSource
+            ? 'Created new Notion page with highlight'
+            : 'Appended highlight to existing Notion page',
+        });
+      } catch (err: any) {
+        // Notion sync failure: mark as FAILED and log
+        await prisma.highlight.update({
+          where: { id: highlight.id },
+          data: { status: 'FAILED' },
+        });
+
+        await prisma.syncLog.create({
+          data: {
+            userId: sessionUser.id,
+            highlightId: highlight.id,
+            status: 'FAILED',
+            errorCode: err?.code || 'NOTION_SYNC_FAILED',
+          },
+        });
+
+        return reply.status(200).send({
+          success: true,
+          highlightId: highlight.id,
+          sourceId: source.id,
+          notionPageId: source.notionPageId,
+          isNewSource,
+          status: 'FAILED',
+          message: `Saved to database, but Notion sync failed: ${err?.message || 'API error'}`,
+        });
+      }
+    }
+
+    // 8. If Notion is not connected, keep highlight as PENDING
     await prisma.syncLog.create({
       data: {
         userId: sessionUser.id,
@@ -111,7 +201,7 @@ export const highlightRoutes: FastifyPluginAsync = async (fastify) => {
       isNewSource,
       status: 'PENDING',
       message:
-        'Highlight saved. Notion sync will be completed after Notion connection is established (Phase 4).',
+        'Highlight saved to database. Connect Notion in extension to sync directly to Notion.',
     });
   });
 

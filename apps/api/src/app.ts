@@ -7,6 +7,7 @@ import { healthRoutes } from './routes/health.js';
 import { prototypeRoutes } from './routes/prototype.js';
 import { authRoutes } from './routes/auth.js';
 import { highlightRoutes } from './routes/highlights.js';
+import { notionRoutes } from './routes/notion.js';
 import { authPlugin } from './middleware/auth.js';
 import { env } from './config/env.js';
 
@@ -48,6 +49,7 @@ export function buildApp(opts: FastifyServerOptions = {}): FastifyInstance {
   app.register(prototypeRoutes);
   app.register(authRoutes);
   app.register(highlightRoutes);
+  app.register(notionRoutes);
 
   return app;
 }

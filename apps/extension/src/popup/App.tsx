@@ -11,8 +11,17 @@ import {
   Lock,
   Layers,
   FileText,
+  Database,
+  Unlink,
 } from 'lucide-react';
 import { api, type UserProfile, type HighlightItem } from '../api/client.js';
+
+interface NotionStatus {
+  isConnected: boolean;
+  workspaceId?: string | null;
+  databaseId?: string | null;
+  databaseTitle?: string | null;
+}
 
 export const App: React.FC = () => {
   // User & Auth State
@@ -29,6 +38,14 @@ export const App: React.FC = () => {
   const [latencyMs, setLatencyMs] = useState<number | null>(null);
   const [highlights, setHighlights] = useState<HighlightItem[]>([]);
   const [isLoadingHighlights, setIsLoadingHighlights] = useState(false);
+
+  // Notion OAuth State (Phase 4)
+  const [notionStatus, setNotionStatus] = useState<NotionStatus | null>(null);
+  const [databases, setDatabases] = useState<Array<{ id: string; title: string }>>([]);
+  const [selectedDb, setSelectedDb] = useState<string>('');
+  const [isLoadingNotion, setIsLoadingNotion] = useState(false);
+  const [isSavingDb, setIsSavingDb] = useState(false);
+  const [notionMsg, setNotionMsg] = useState<string | null>(null);
 
   // Check backend health
   const checkHealth = useCallback(async () => {
@@ -58,6 +75,31 @@ export const App: React.FC = () => {
     }
   }, []);
 
+  // Fetch Notion status & databases
+  const loadNotionStatus = useCallback(async () => {
+    setIsLoadingNotion(true);
+    try {
+      const status = await api.notion.getStatus();
+      setNotionStatus(status);
+      if (status.databaseId) {
+        setSelectedDb(status.databaseId);
+      }
+
+      if (status.isConnected) {
+        try {
+          const dbs = await api.notion.getDatabases();
+          setDatabases(dbs);
+        } catch {
+          // ignore if databases call fails
+        }
+      }
+    } catch (err) {
+      console.warn('Failed to load Notion status:', err);
+    } finally {
+      setIsLoadingNotion(false);
+    }
+  }, []);
+
   // Initial user check
   const checkCurrentUser = useCallback(async () => {
     setIsLoadingUser(true);
@@ -65,7 +107,7 @@ export const App: React.FC = () => {
       const currentUser = await api.auth.getMe();
       setUser(currentUser);
       if (currentUser) {
-        await loadHighlights();
+        await Promise.all([loadHighlights(), loadNotionStatus()]);
       }
     } catch (err) {
       console.warn('User not authenticated:', err);
@@ -73,7 +115,7 @@ export const App: React.FC = () => {
     } finally {
       setIsLoadingUser(false);
     }
-  }, [loadHighlights]);
+  }, [loadHighlights, loadNotionStatus]);
 
   useEffect(() => {
     checkHealth();
@@ -107,7 +149,7 @@ export const App: React.FC = () => {
       setUser(authedUser);
       setEmail('');
       setPassword('');
-      await loadHighlights();
+      await Promise.all([loadHighlights(), loadNotionStatus()]);
     } catch (err: any) {
       setAuthError(err?.message || 'Authentication failed. Please check credentials.');
     } finally {
@@ -124,6 +166,67 @@ export const App: React.FC = () => {
     } finally {
       setUser(null);
       setHighlights([]);
+      setNotionStatus(null);
+      setDatabases([]);
+    }
+  };
+
+  // Connect Notion OAuth
+  const handleConnectNotion = async () => {
+    setNotionMsg(null);
+    try {
+      const { url } = await api.notion.getConnectUrl();
+      if (typeof chrome !== 'undefined' && chrome.tabs) {
+        chrome.tabs.create({ url });
+      } else {
+        window.open(url, '_blank');
+      }
+    } catch (err: any) {
+      setNotionMsg(err?.message || 'Failed to initiate Notion connection.');
+    }
+  };
+
+  // Select database
+  const handleSelectDatabase = async (dbId: string) => {
+    setSelectedDb(dbId);
+    if (!dbId) return;
+
+    setIsSavingDb(true);
+    setNotionMsg(null);
+    try {
+      const res = await api.notion.selectDatabase(dbId);
+      setNotionStatus((prev) =>
+        prev
+          ? {
+              ...prev,
+              databaseId: res.databaseId,
+              databaseTitle: res.databaseTitle,
+            }
+          : null,
+      );
+      setNotionMsg('Target database saved!');
+      setTimeout(() => setNotionMsg(null), 3000);
+    } catch (err: any) {
+      setNotionMsg(err?.message || 'Failed to select database.');
+    } finally {
+      setIsSavingDb(false);
+    }
+  };
+
+  // Disconnect Notion
+  const handleDisconnectNotion = async () => {
+    if (!window.confirm('Disconnect Notion account? Highlights will no longer sync directly.')) {
+      return;
+    }
+    try {
+      await api.notion.disconnect();
+      setNotionStatus({ isConnected: false });
+      setDatabases([]);
+      setSelectedDb('');
+      setNotionMsg('Notion disconnected.');
+      setTimeout(() => setNotionMsg(null), 3000);
+    } catch (err: any) {
+      setNotionMsg(err?.message || 'Failed to disconnect.');
     }
   };
 
@@ -144,14 +247,21 @@ export const App: React.FC = () => {
         <button
           onClick={() => {
             checkHealth();
-            if (user) loadHighlights();
+            if (user) {
+              loadHighlights();
+              loadNotionStatus();
+            }
           }}
           className="btn-icon"
           title="Refresh Status"
         >
           <RefreshCw
             size={13}
-            className={backendStatus === 'checking' || isLoadingHighlights ? 'pulse-dot' : ''}
+            className={
+              backendStatus === 'checking' || isLoadingHighlights || isLoadingNotion
+                ? 'pulse-dot'
+                : ''
+            }
           />
         </button>
       </header>
@@ -184,12 +294,94 @@ export const App: React.FC = () => {
             </button>
           </div>
 
+          {/* Notion Integration Card (Phase 4) */}
+          <section className="card">
+            <div className="card-title">
+              <div className="card-title-left">
+                <Database size={13} />
+                <span>Notion Connection</span>
+              </div>
+              {notionStatus?.isConnected && (
+                <button
+                  onClick={handleDisconnectNotion}
+                  className="btn-danger-ghost"
+                  style={{ fontSize: '10px', padding: '2px 6px' }}
+                  title="Disconnect Notion"
+                >
+                  <Unlink size={10} />
+                  Disconnect
+                </button>
+              )}
+            </div>
+
+            {notionMsg && (
+              <div
+                style={{
+                  fontSize: '11px',
+                  color: notionMsg.includes('Failed') ? '#f87171' : '#34d399',
+                  marginBottom: '8px',
+                }}
+              >
+                {notionMsg}
+              </div>
+            )}
+
+            {!notionStatus?.isConnected ? (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                <p style={{ fontSize: '12px', color: 'var(--text-secondary)' }}>
+                  Connect your Notion workspace to sync web highlights directly into your database.
+                </p>
+                <button onClick={handleConnectNotion} className="btn notion-btn">
+                  Connect Notion Workspace
+                </button>
+              </div>
+            ) : (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                <div className="status-row">
+                  <span className="status-label">Workspace Status</span>
+                  <span className="status-badge ok">
+                    <CheckCircle2 size={10} />
+                    Connected
+                  </span>
+                </div>
+
+                <div className="form-group" style={{ marginTop: '4px' }}>
+                  <label className="form-label">Destination Database</label>
+                  <select
+                    className="select-field"
+                    value={selectedDb}
+                    onChange={(e) => handleSelectDatabase(e.target.value)}
+                    disabled={isSavingDb || isLoadingNotion}
+                  >
+                    <option value="">-- Choose a database --</option>
+                    {databases.map((db) => (
+                      <option key={db.id} value={db.id}>
+                        {db.title}
+                      </option>
+                    ))}
+                    {selectedDb && !databases.some((d) => d.id === selectedDb) && (
+                      <option value={selectedDb}>
+                        {notionStatus.databaseTitle || 'Current Database'}
+                      </option>
+                    )}
+                  </select>
+                </div>
+
+                {notionStatus.databaseTitle && (
+                  <span style={{ fontSize: '11px', color: '#a5b4fc' }}>
+                    Active: <strong>{notionStatus.databaseTitle}</strong>
+                  </span>
+                )}
+              </div>
+            )}
+          </section>
+
           {/* System Status Card */}
           <section className="card">
             <div className="card-title">
               <div className="card-title-left">
                 <Server size={13} />
-                <span>Integration Status</span>
+                <span>System Status</span>
               </div>
             </div>
 
@@ -212,15 +404,7 @@ export const App: React.FC = () => {
               <span className="status-label">Context Menu</span>
               <span className="status-badge ok">
                 <CheckCircle2 size={10} />
-                "Send to Notion" Ready
-              </span>
-            </div>
-
-            <div className="status-row">
-              <span className="status-label">Notion Sync Engine</span>
-              <span className="status-badge pending">
-                <span className="pulse-dot" />
-                Phase 4 (OAuth Next)
+                &quot;Send to Notion&quot; Ready
               </span>
             </div>
           </section>
@@ -361,9 +545,9 @@ export const App: React.FC = () => {
             </div>
             <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', fontSize: '11px', color: 'var(--text-secondary)' }}>
               <div>1. Sign in or create a free account above.</div>
-              <div>2. Select text on any web article or documentation.</div>
-              <div>3. Right-click and choose <strong>&quot;Send to Notion&quot;</strong>.</div>
-              <div>4. Highlights from the same page are automatically grouped together!</div>
+              <div>2. Connect your Notion workspace and pick a database.</div>
+              <div>3. Highlight text on any web page ➔ Right-click <strong>&quot;Send to Notion&quot;</strong>.</div>
+              <div>4. Highlights from the same page are automatically grouped together in Notion!</div>
             </div>
           </section>
         </>

@@ -103,6 +103,44 @@ export class NotionService {
   }
 
   /**
+   * Search for accessible databases
+   */
+  public async searchDatabases(): Promise<Array<{ id: string; title: string }>> {
+    try {
+      const response = await this.client.search({
+        filter: { value: 'data_source', property: 'object' },
+        page_size: 100,
+      });
+
+      return (response.results as any[]).map((db) => {
+        const titleArr = db.title || [];
+        const title = titleArr.map((t: any) => t.plain_text || '').join('').trim() || 'Untitled Database';
+        // In Notion v5 data_source objects, the real database ID is in parent.database_id
+        const databaseId = db.parent?.type === 'database_id' ? db.parent.database_id : db.id;
+        return {
+          id: databaseId,
+          title,
+        };
+      });
+    } catch (error) {
+      throw this.transformNotionError(error, 'Failed to search Notion databases');
+    }
+  }
+
+  /**
+   * Get human-readable title of a database
+   */
+  public async getDatabaseTitle(databaseId: string): Promise<string> {
+    try {
+      const db = await this.client.databases.retrieve({ database_id: databaseId });
+      const titleArr = (db as any).title || [];
+      return titleArr.map((t: any) => t.plain_text || '').join('').trim() || 'Untitled Database';
+    } catch {
+      return 'Selected Database';
+    }
+  }
+
+  /**
    * Search for an existing page in the database with matching URL
    */
   public async findPageByUrl(databaseId: string, url: string): Promise<string | null> {

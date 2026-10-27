@@ -142,6 +142,45 @@ class ApiClient {
       return data.highlights;
     },
   };
+
+  // Notion endpoints (Phase 4)
+  public notion = {
+    getStatus: async () => {
+      return this.request<{
+        isConnected: boolean;
+        workspaceId?: string | null;
+        databaseId?: string | null;
+        databaseTitle?: string | null;
+      }>('/api/notion/status');
+    },
+
+    getConnectUrl: async () => {
+      return this.request<{ url: string }>('/api/notion/connect');
+    },
+
+    getDatabases: async () => {
+      const data = await this.request<{ databases: Array<{ id: string; title: string }> }>(
+        '/api/notion/databases',
+      );
+      return data.databases;
+    },
+
+    selectDatabase: async (databaseId: string) => {
+      return this.request<{ success: boolean; databaseId: string; databaseTitle?: string }>(
+        '/api/notion/database',
+        {
+          method: 'POST',
+          body: JSON.stringify({ databaseId }),
+        },
+      );
+    },
+
+    disconnect: async () => {
+      await this.request<{ message: string }>('/api/notion/connection', {
+        method: 'DELETE',
+      });
+    },
+  };
 }
 
 export const api = new ApiClient();
