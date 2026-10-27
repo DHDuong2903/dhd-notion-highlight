@@ -29,6 +29,9 @@ importers:
       '@notion-highlight/shared':
         specifier: workspace:*
         version: link:../../packages/shared
+      '@notionhq/client':
+        specifier: ^5.28.0
+        version: 5.28.0
       dotenv:
         specifier: ^16.4.5
         version: 16.6.1
@@ -527,6 +530,10 @@ packages:
     engines: {node: ^22.20 || ^24.12 || >=25}
     cpu: [x64]
     os: [linux]
+
+  '@notionhq/client@5.28.0':
+    resolution: {integrity: sha512-DbTOT7OSjy+JhoVju/3exAb/nahfUpG/VC8coYFL6AXJZNOCo2kl81Hjf0s6FR7V9xsOWT7SCG4MGkIyBkZUSA==}
+    engines: {node: '>=18'}
 
   '@pinojs/redact@0.4.0':
     resolution: {integrity: sha512-k2ENnmBugE/rzQfEcdWHcCY+/FM3VLzH9cYEsbdsoqrvzAKRhUZeRNhAZvB8OitQJ1TBed3yqWtdjzS6wJKBwg==}
@@ -1560,6 +1567,8 @@ snapshots:
 
   '@napi-rs/lzma-linux-x64-gnu@1.5.1':
     optional: true
+
+  '@notionhq/client@5.28.0': {}
 
   '@pinojs/redact@0.4.0': {}
 

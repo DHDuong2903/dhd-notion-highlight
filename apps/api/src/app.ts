@@ -2,6 +2,7 @@ import fastify, { FastifyInstance, FastifyServerOptions } from 'fastify';
 import cors from '@fastify/cors';
 import sensible from '@fastify/sensible';
 import { healthRoutes } from './routes/health.js';
+import { prototypeRoutes } from './routes/prototype.js';
 import { env } from './config/env.js';
 
 export function buildApp(opts: FastifyServerOptions = {}): FastifyInstance {
@@ -21,11 +22,13 @@ export function buildApp(opts: FastifyServerOptions = {}): FastifyInstance {
       status: 'running',
       version: '0.1.0',
       health: '/api/health',
+      prototypeStatus: '/api/prototype/status',
     });
   });
 
   // Routes
   app.register(healthRoutes);
+  app.register(prototypeRoutes);
 
   return app;
 }
