@@ -42,8 +42,8 @@ This document defines the agent instructions, project state, architectural guide
 | **Phase 0** | Project Foundation (Monorepo, Fastify TS, Vite MV3 Extension, Shared)    | ✅ Complete    |
 | **Phase 1** | Notion API Prototype (Direct Integration Spike & Source Grouping)        | ✅ Complete    |
 | **Phase 2** | Backend Core & Database (PostgreSQL, Prisma, Auth, Highlight API)        | ✅ Complete    |
-| **Phase 3** | Chrome Extension (Selection, Context Menu, Popup Auth & Status)          | ⏳ Next Up     |
-| **Phase 4** | Notion OAuth & Sync Integration (OAuth 2.0 flow, DB Picker, Sync Engine) | ⏳ Not Started |
+| **Phase 3** | Chrome Extension (Selection, Context Menu, Popup Auth & Status)          | ✅ Complete    |
+| **Phase 4** | Notion OAuth & Sync Integration (OAuth 2.0 flow, DB Picker, Sync Engine) | ⏳ Next Up     |
 | **Phase 5** | MVP Hardening & Beta Release (End-to-end integration tests & packaging)  | ⏳ Not Started |
 
 ---

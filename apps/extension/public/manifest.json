@@ -3,7 +3,7 @@
   "name": "Notion Highlight Sync",
   "version": "0.1.0",
   "description": "Save web highlights to Notion, automatically grouped by source article.",
-  "permissions": ["contextMenus", "activeTab", "storage"],
+  "permissions": ["contextMenus", "activeTab", "storage", "notifications"],
   "host_permissions": ["http://localhost:3001/*", "http://127.0.0.1:3001/*"],
   "action": {
     "default_popup": "popup.html",
