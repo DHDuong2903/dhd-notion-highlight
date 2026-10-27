@@ -1,0 +1,26 @@
+{
+  "manifest_version": 3,
+  "name": "Notion Highlight Sync",
+  "version": "0.1.0",
+  "description": "Save web highlights to Notion, automatically grouped by source article.",
+  "permissions": ["contextMenus", "activeTab", "storage"],
+  "host_permissions": ["http://localhost:3001/*", "http://127.0.0.1:3001/*"],
+  "action": {
+    "default_popup": "popup.html",
+    "default_title": "Notion Highlight Sync",
+    "default_icon": {
+      "16": "icons/icon16.png",
+      "48": "icons/icon48.png",
+      "128": "icons/icon128.png"
+    }
+  },
+  "background": {
+    "service_worker": "background.js",
+    "type": "module"
+  },
+  "icons": {
+    "16": "icons/icon16.png",
+    "48": "icons/icon48.png",
+    "128": "icons/icon128.png"
+  }
+}
