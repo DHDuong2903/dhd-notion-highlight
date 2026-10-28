@@ -13,6 +13,12 @@ export const databaseItemSchema = z.object({
 
 export type DatabaseItem = z.infer<typeof databaseItemSchema>;
 
+export const createDatabaseSchema = z.object({
+  title: z.string().trim().min(1, 'Database title cannot be empty').max(100).optional(),
+});
+
+export type CreateDatabaseInput = z.infer<typeof createDatabaseSchema>;
+
 export const notionStatusResponseSchema = z.object({
   isConnected: z.boolean(),
   workspaceId: z.string().nullable().optional(),

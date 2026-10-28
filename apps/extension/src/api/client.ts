@@ -175,6 +175,18 @@ class ApiClient {
       );
     },
 
+    createDatabase: async (title?: string) => {
+      return this.request<{
+        success: boolean;
+        databaseId: string;
+        databaseTitle: string;
+        alreadyExisted?: boolean;
+      }>('/api/notion/database/create', {
+        method: 'POST',
+        body: JSON.stringify({ title }),
+      });
+    },
+
     disconnect: async () => {
       await this.request<{ message: string }>('/api/notion/connection', {
         method: 'DELETE',

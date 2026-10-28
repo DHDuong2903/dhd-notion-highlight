@@ -7,6 +7,7 @@ import { NotionService } from '../services/notion.js';
 import {
   AppErrorCode,
   selectDatabaseSchema,
+  createDatabaseSchema,
   type NotionStatusResponse,
 } from '@notion-highlight/shared';
 
@@ -345,6 +346,54 @@ export const notionRoutes: FastifyPluginAsync = async (fastify) => {
         error: {
           code: err?.code || AppErrorCode.NOTION_API_ERROR,
           message: err?.message || 'Failed to verify Notion database',
+        },
+      });
+    }
+  });
+
+  // POST /api/notion/database/create — Auto-create or link custom/default database
+  fastify.post('/api/notion/database/create', { preHandler: requireAuth }, async (request, reply) => {
+    const sessionUser = request.sessionUser!;
+
+    const parseResult = createDatabaseSchema.safeParse(request.body || {});
+    const customTitle = parseResult.success ? parseResult.data.title : undefined;
+
+    const connection = await prisma.notionConnection.findUnique({
+      where: { userId: sessionUser.id },
+    });
+
+    if (!connection) {
+      return reply.status(400).send({
+        error: {
+          code: AppErrorCode.NOTION_NOT_CONNECTED,
+          message: 'Notion is not connected. Please connect your Notion account first.',
+        },
+      });
+    }
+
+    try {
+      const token = decryptToken(connection.accessTokenEncrypted);
+      const notion = new NotionService({ auth: token });
+
+      const newDb = await notion.createDefaultDatabase(customTitle);
+
+      // Automatically set this as the active database
+      await prisma.notionConnection.update({
+        where: { userId: sessionUser.id },
+        data: { databaseId: newDb.id },
+      });
+
+      return reply.status(201).send({
+        success: true,
+        databaseId: newDb.id,
+        databaseTitle: newDb.title,
+        alreadyExisted: !!newDb.alreadyExisted,
+      });
+    } catch (err: any) {
+      return reply.status(err?.statusCode || 500).send({
+        error: {
+          code: err?.code || AppErrorCode.NOTION_API_ERROR,
+          message: err?.message || 'Failed to setup Notion database',
         },
       });
     }

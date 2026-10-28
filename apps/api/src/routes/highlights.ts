@@ -36,11 +36,16 @@ export const highlightRoutes: FastifyPluginAsync = async (fastify) => {
       include: { source: true },
     });
     if (existing) {
+      const notionUrl = existing.source.notionPageId
+        ? `https://notion.so/${existing.source.notionPageId.replace(/-/g, '')}`
+        : undefined;
+
       return reply.status(200).send({
         success: true,
         highlightId: existing.id,
         sourceId: existing.sourceId,
         notionPageId: existing.source.notionPageId,
+        notionUrl,
         isNewSource: false,
         isDuplicate: true,
         status: existing.status,
@@ -62,25 +67,36 @@ export const highlightRoutes: FastifyPluginAsync = async (fastify) => {
       });
     }
 
-    // 4. Canonicalize URL & look up source
+    // 4. Check Notion connection to identify target database
+    const connection = await prisma.notionConnection.findUnique({
+      where: { userId: sessionUser.id },
+    });
+    const targetDbId = connection?.databaseId || '';
+
+    // 5. Canonicalize URL & look up source scoped to the target database
     const canonicalUrl = canonicalizeUrl(url);
 
     let source = await prisma.source.findUnique({
       where: {
-        userId_canonicalUrl: { userId: sessionUser.id, canonicalUrl },
+        userId_canonicalUrl_databaseId: {
+          userId: sessionUser.id,
+          canonicalUrl,
+          databaseId: targetDbId,
+        },
       },
     });
 
     const isNewSource = source === null;
 
     if (!source) {
-      // 5a. Create new source
+      // Create new source scoped to this database
       source = await prisma.source.create({
         data: {
           userId: sessionUser.id,
           canonicalUrl,
           originalUrl: url,
           title,
+          databaseId: targetDbId,
         },
       });
     }
@@ -96,11 +112,7 @@ export const highlightRoutes: FastifyPluginAsync = async (fastify) => {
       },
     });
 
-    // 7. Check if user has connected Notion and selected a database
-    const connection = await prisma.notionConnection.findUnique({
-      where: { userId: sessionUser.id },
-    });
-
+    // 7. Sync to Notion if connected and database is chosen
     if (connection && connection.databaseId) {
       try {
         const token = decryptToken(connection.accessTokenEncrypted);
@@ -144,11 +156,14 @@ export const highlightRoutes: FastifyPluginAsync = async (fastify) => {
           },
         });
 
+        const notionUrl = `https://notion.so/${notionPageId.replace(/-/g, '')}`;
+
         return reply.status(200).send({
           success: true,
           highlightId: highlight.id,
           sourceId: source.id,
           notionPageId,
+          notionUrl,
           isNewSource,
           status: 'SYNCED',
           message: isNewSource

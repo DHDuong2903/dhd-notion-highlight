@@ -141,6 +141,94 @@ export class NotionService {
   }
 
   /**
+   * Automatically create or link a database with Name and URL properties
+   */
+  public async createDefaultDatabase(
+    title: string = 'Web Highlights',
+    parentPageId?: string,
+  ): Promise<{ id: string; title: string; alreadyExisted?: boolean }> {
+    try {
+      const cleanTitle = title.trim() || 'Web Highlights';
+
+      // 1. Deduplication check: Reuse existing database if one with the same name already exists
+      const existingDatabases = await this.searchDatabases();
+      const existing = existingDatabases.find(
+        (db) => db.title.trim().toLowerCase() === cleanTitle.toLowerCase(),
+      );
+
+      if (existing) {
+        return {
+          id: existing.id,
+          title: existing.title,
+          alreadyExisted: true,
+        };
+      }
+
+      // 2. Resolve safe parent page (NEVER pick a page that is a child/row of a database)
+      let parentId = parentPageId;
+
+      if (!parentId) {
+        const search = await this.client.search({
+          filter: { value: 'page', property: 'object' },
+          page_size: 100,
+        });
+
+        const validStandalonePages = search.results.filter((r) => {
+          if (r.object !== 'page') return false;
+          const parentType = (r as any).parent?.type;
+          // In Notion, pages inside a database have parent.type === 'database_id' or 'data_source_id'
+          return parentType !== 'database_id' && parentType !== 'data_source_id';
+        });
+
+        if (validStandalonePages.length === 0) {
+          throw new NotionAppError(
+            'Notion API requires an existing Notion Page to host new databases. You can either: (1) Create a database directly in Notion and pick it from the dropdown, or (2) Create a top-level Page in Notion and share it with this integration.',
+            AppErrorCode.BAD_REQUEST,
+            400,
+          );
+        }
+
+        // Prefer workspace-level root pages if accessible
+        const topLevelPage =
+          validStandalonePages.find((r) => (r as any).parent?.type === 'workspace') ||
+          validStandalonePages[0];
+
+        parentId = topLevelPage.id;
+      }
+
+      // 3. Create the database
+      const created = await this.client.databases.create({
+        parent: { type: 'page_id', page_id: parentId },
+        title: [
+          {
+            type: 'text',
+            text: { content: cleanTitle },
+          },
+        ],
+        initial_data_source: {
+          properties: {
+            Name: {
+              title: {},
+            },
+            URL: {
+              url: {},
+            },
+          },
+        },
+      });
+
+      return {
+        id: created.id,
+        title: cleanTitle,
+        alreadyExisted: false,
+      };
+    } catch (error) {
+      if (error instanceof NotionAppError) throw error;
+      throw this.transformNotionError(error, `Failed to create Notion database [${title}]`);
+    }
+  }
+
+  /**
    * Search for an existing page in the database with matching URL
    */
   public async findPageByUrl(databaseId: string, url: string): Promise<string | null> {

@@ -1,10 +1,6 @@
-import React, { useEffect, useState, useCallback } from 'react';
+import React, { useEffect, useState, useCallback, useRef } from 'react';
 import {
-  BookmarkCheck,
-  Server,
   Sparkles,
-  CheckCircle2,
-  AlertCircle,
   RefreshCw,
   LogOut,
   Mail,
@@ -13,6 +9,12 @@ import {
   FileText,
   Database,
   Unlink,
+  ExternalLink,
+  ChevronDown,
+  Check,
+  AlertCircle,
+  Sun,
+  Moon,
 } from 'lucide-react';
 import { api, type UserProfile, type HighlightItem } from '../api/client.js';
 
@@ -24,6 +26,40 @@ interface NotionStatus {
 }
 
 export const App: React.FC = () => {
+  // Theme State: 'system' | 'light' | 'dark'
+  const [themePreference, setThemePreference] = useState<'system' | 'light' | 'dark'>(() => {
+    return (localStorage.getItem('notion_highlight_theme') as any) || 'system';
+  });
+  const [systemIsDark, setSystemIsDark] = useState<boolean>(() => {
+    return typeof window !== 'undefined'
+      ? window.matchMedia('(prefers-color-scheme: dark)').matches
+      : true;
+  });
+
+  // Calculate effective theme
+  const effectiveTheme =
+    themePreference === 'system' ? (systemIsDark ? 'dark' : 'light') : themePreference;
+
+  // Listen to system theme changes
+  useEffect(() => {
+    const mediaQuery = window.matchMedia('(prefers-color-scheme: dark)');
+    const handler = (e: MediaQueryListEvent) => setSystemIsDark(e.matches);
+    mediaQuery.addEventListener('change', handler);
+    return () => mediaQuery.removeEventListener('change', handler);
+  }, []);
+
+  // Sync theme attribute to document
+  useEffect(() => {
+    document.documentElement.setAttribute('data-theme', effectiveTheme);
+  }, [effectiveTheme]);
+
+  // Toggle theme handler
+  const handleToggleTheme = () => {
+    const nextTheme = effectiveTheme === 'dark' ? 'light' : 'dark';
+    setThemePreference(nextTheme);
+    localStorage.setItem('notion_highlight_theme', nextTheme);
+  };
+
   // User & Auth State
   const [user, setUser] = useState<UserProfile | null>(null);
   const [isLoadingUser, setIsLoadingUser] = useState(true);
@@ -35,11 +71,10 @@ export const App: React.FC = () => {
 
   // System & Highlights State
   const [backendStatus, setBackendStatus] = useState<'checking' | 'connected' | 'disconnected'>('checking');
-  const [latencyMs, setLatencyMs] = useState<number | null>(null);
   const [highlights, setHighlights] = useState<HighlightItem[]>([]);
   const [isLoadingHighlights, setIsLoadingHighlights] = useState(false);
 
-  // Notion OAuth State (Phase 4)
+  // Notion OAuth State
   const [notionStatus, setNotionStatus] = useState<NotionStatus | null>(null);
   const [databases, setDatabases] = useState<Array<{ id: string; title: string }>>([]);
   const [selectedDb, setSelectedDb] = useState<string>('');
@@ -47,13 +82,27 @@ export const App: React.FC = () => {
   const [isSavingDb, setIsSavingDb] = useState(false);
   const [notionMsg, setNotionMsg] = useState<string | null>(null);
 
+  // Custom Dropdown State
+  const [isDropdownOpen, setIsDropdownOpen] = useState(false);
+  const dropdownRef = useRef<HTMLDivElement>(null);
+
+  // Close dropdown on click outside
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
+        setIsDropdownOpen(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
+
   // Check backend health
   const checkHealth = useCallback(async () => {
     try {
       const res = await api.checkHealth();
       if (res.status === 'ok') {
         setBackendStatus('connected');
-        setLatencyMs(res.latencyMs);
       } else {
         setBackendStatus('disconnected');
       }
@@ -189,6 +238,7 @@ export const App: React.FC = () => {
   // Select database
   const handleSelectDatabase = async (dbId: string) => {
     setSelectedDb(dbId);
+    setIsDropdownOpen(false);
     if (!dbId) return;
 
     setIsSavingDb(true);
@@ -204,8 +254,8 @@ export const App: React.FC = () => {
             }
           : null,
       );
-      setNotionMsg('Target database saved!');
-      setTimeout(() => setNotionMsg(null), 3000);
+      setNotionMsg(`Saved: ${res.databaseTitle}`);
+      setTimeout(() => setNotionMsg(null), 2500);
     } catch (err: any) {
       setNotionMsg(err?.message || 'Failed to select database.');
     } finally {
@@ -215,97 +265,119 @@ export const App: React.FC = () => {
 
   // Disconnect Notion
   const handleDisconnectNotion = async () => {
-    if (!window.confirm('Disconnect Notion account? Highlights will no longer sync directly.')) {
+    if (!window.confirm('Disconnect Notion workspace?')) {
       return;
     }
     try {
       await api.notion.disconnect();
       setNotionStatus({ isConnected: false });
-      setDatabases([]);
       setSelectedDb('');
+      setDatabases([]);
       setNotionMsg('Notion disconnected.');
-      setTimeout(() => setNotionMsg(null), 3000);
+      setTimeout(() => setNotionMsg(null), 2500);
     } catch (err: any) {
-      setNotionMsg(err?.message || 'Failed to disconnect.');
+      setNotionMsg(err?.message || 'Failed to disconnect Notion.');
     }
   };
 
+  // Find title of currently selected database
+  const selectedDbTitle =
+    databases.find((d) => d.id === selectedDb)?.title ||
+    notionStatus?.databaseTitle ||
+    'Choose a Notion database...';
+
+  // Limit display to the 5 most recent highlights
+  const recentHighlights = highlights.slice(0, 5);
+
   return (
-    <div className="popup-container">
-      {/* Header */}
+    <div className="popup-container" data-theme={effectiveTheme}>
+      {/* Header with Logo, Theme toggle, and User info */}
       <header className="header">
         <div className="logo-group">
           <div className="logo-badge">
-            <BookmarkCheck size={20} color="#ffffff" />
+            <img
+              src="icons/logo.png"
+              alt="Notion Highlight"
+              style={{ width: '100%', height: '100%', objectFit: 'contain' }}
+            />
           </div>
           <div className="title-group">
             <h1>Notion Highlight</h1>
-            <p>1-Click Web Highlights</p>
+            <p style={{ display: 'flex', alignItems: 'center', gap: '5px' }}>
+              <span
+                style={{
+                  width: '6px',
+                  height: '6px',
+                  borderRadius: '50%',
+                  background: backendStatus === 'connected' ? '#10b981' : '#ef4444',
+                  display: 'inline-block',
+                }}
+              />
+              {backendStatus === 'connected' ? 'Ready' : 'Offline'}
+            </p>
           </div>
         </div>
 
-        <button
-          onClick={() => {
-            checkHealth();
-            if (user) {
-              loadHighlights();
-              loadNotionStatus();
-            }
-          }}
-          className="btn-icon"
-          title="Refresh Status"
-        >
-          <RefreshCw
-            size={13}
-            className={
-              backendStatus === 'checking' || isLoadingHighlights || isLoadingNotion
-                ? 'pulse-dot'
-                : ''
-            }
-          />
-        </button>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+          {/* Theme Toggle Button */}
+          <button
+            onClick={handleToggleTheme}
+            className="btn-icon"
+            style={{ padding: '4px' }}
+            title={`Switch to ${effectiveTheme === 'dark' ? 'Light' : 'Dark'} mode`}
+          >
+            {effectiveTheme === 'dark' ? <Sun size={13} /> : <Moon size={13} />}
+          </button>
+
+          {user && (
+            <>
+              <span
+                style={{
+                  fontSize: '11px',
+                  color: 'var(--text-secondary)',
+                  maxWidth: '100px',
+                  overflow: 'hidden',
+                  textOverflow: 'ellipsis',
+                  whiteSpace: 'nowrap',
+                }}
+                title={user.email}
+              >
+                {user.email}
+              </span>
+              <button
+                onClick={handleLogout}
+                className="btn-danger-ghost"
+                style={{ padding: '3px 6px', fontSize: '10px' }}
+                title="Sign Out"
+              >
+                <LogOut size={11} />
+              </button>
+            </>
+          )}
+        </div>
       </header>
 
       {/* Loading initial session */}
       {isLoadingUser ? (
-        <div className="card" style={{ textAlign: 'center', padding: '30px 10px' }}>
-          <span className="pulse-dot" style={{ width: '10px', height: '10px', margin: '0 auto 10px' }} />
+        <div className="card" style={{ textAlign: 'center', padding: '24px 10px' }}>
+          <span className="pulse-dot" style={{ width: '8px', height: '8px', margin: '0 auto 8px' }} />
           <p style={{ color: 'var(--text-secondary)', fontSize: '12px' }}>Connecting to session...</p>
         </div>
       ) : user ? (
         /* Authenticated View */
         <>
-          {/* User Profile Card */}
-          <div className="user-card">
-            <div className="user-info">
-              <div className="user-avatar">{user.email.charAt(0).toUpperCase()}</div>
-              <div className="user-details">
-                <span className="user-email" title={user.email}>
-                  {user.email}
-                </span>
-                <div className="user-meta">
-                  <span className="plan-badge">{user.plan}</span>
-                </div>
-              </div>
-            </div>
-            <button onClick={handleLogout} className="btn-danger-ghost" title="Sign Out">
-              <LogOut size={12} />
-              Logout
-            </button>
-          </div>
-
-          {/* Notion Integration Card (Phase 4) */}
-          <section className="card">
+          {/* Notion Destination Database Card — Higher z-index to overlay highlights card */}
+          <section className="card" style={{ position: 'relative', zIndex: 50 }}>
             <div className="card-title">
               <div className="card-title-left">
-                <Database size={13} />
-                <span>Notion Connection</span>
+                <Database size={12} />
+                <span>Destination Database</span>
               </div>
               {notionStatus?.isConnected && (
                 <button
                   onClick={handleDisconnectNotion}
                   className="btn-danger-ghost"
-                  style={{ fontSize: '10px', padding: '2px 6px' }}
+                  style={{ fontSize: '10px', padding: '1px 5px' }}
                   title="Disconnect Notion"
                 >
                   <Unlink size={10} />
@@ -318,8 +390,8 @@ export const App: React.FC = () => {
               <div
                 style={{
                   fontSize: '11px',
-                  color: notionMsg.includes('Failed') ? '#f87171' : '#34d399',
-                  marginBottom: '8px',
+                  color: notionMsg.includes('Failed') ? 'var(--danger)' : 'var(--success)',
+                  marginBottom: '6px',
                 }}
               >
                 {notionMsg}
@@ -328,98 +400,98 @@ export const App: React.FC = () => {
 
             {!notionStatus?.isConnected ? (
               <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                <p style={{ fontSize: '12px', color: 'var(--text-secondary)' }}>
-                  Connect your Notion workspace to sync web highlights directly into your database.
+                <p style={{ fontSize: '11px', color: 'var(--text-secondary)' }}>
+                  Connect your Notion workspace to save highlights.
                 </p>
-                <button onClick={handleConnectNotion} className="btn notion-btn">
+                <button onClick={handleConnectNotion} className="btn notion-btn" style={{ padding: '7px 12px' }}>
                   Connect Notion Workspace
                 </button>
               </div>
             ) : (
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                <div className="status-row">
-                  <span className="status-label">Workspace Status</span>
-                  <span className="status-badge ok">
-                    <CheckCircle2 size={10} />
-                    Connected
-                  </span>
-                </div>
-
-                <div className="form-group" style={{ marginTop: '4px' }}>
-                  <label className="form-label">Destination Database</label>
-                  <select
-                    className="select-field"
-                    value={selectedDb}
-                    onChange={(e) => handleSelectDatabase(e.target.value)}
-                    disabled={isSavingDb || isLoadingNotion}
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                {/* Custom Styled Dropdown */}
+                <div className="custom-select-wrapper" ref={dropdownRef}>
+                  <div
+                    className={`custom-select-trigger ${isDropdownOpen ? 'open' : ''}`}
+                    onClick={() => setIsDropdownOpen(!isDropdownOpen)}
                   >
-                    <option value="">-- Choose a database --</option>
-                    {databases.map((db) => (
-                      <option key={db.id} value={db.id}>
-                        {db.title}
-                      </option>
-                    ))}
-                    {selectedDb && !databases.some((d) => d.id === selectedDb) && (
-                      <option value={selectedDb}>
-                        {notionStatus.databaseTitle || 'Current Database'}
-                      </option>
-                    )}
-                  </select>
-                </div>
+                    <div className="custom-select-value">
+                      <Database size={13} style={{ color: 'var(--accent)', flexShrink: 0 }} />
+                      <span style={{ overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                        {isSavingDb ? 'Saving destination...' : selectedDbTitle}
+                      </span>
+                    </div>
+                    <div className={`custom-select-chevron ${isDropdownOpen ? 'open' : ''}`}>
+                      <ChevronDown size={14} />
+                    </div>
+                  </div>
 
-                {notionStatus.databaseTitle && (
-                  <span style={{ fontSize: '11px', color: '#a5b4fc' }}>
-                    Active: <strong>{notionStatus.databaseTitle}</strong>
-                  </span>
-                )}
+                  {isDropdownOpen && (
+                    <div className="custom-select-dropdown">
+                      <div className="custom-select-list">
+                        {databases.length === 0 ? (
+                          <div style={{ padding: '8px', color: 'var(--text-muted)', fontSize: '11px', textAlign: 'center' }}>
+                            No accessible databases found. Make sure you shared a database with the integration in Notion.
+                          </div>
+                        ) : (
+                          databases.map((db) => {
+                            const isSelected = db.id === selectedDb;
+                            return (
+                              <div
+                                key={db.id}
+                                className={`custom-select-item ${isSelected ? 'selected' : ''}`}
+                                onClick={() => handleSelectDatabase(db.id)}
+                              >
+                                <div style={{ display: 'flex', alignItems: 'center', gap: '8px', overflow: 'hidden' }}>
+                                  <Database size={12} style={{ opacity: 0.7, flexShrink: 0 }} />
+                                  <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                                    {db.title}
+                                  </span>
+                                </div>
+                                {isSelected && <Check size={13} style={{ color: 'var(--accent)', flexShrink: 0 }} />}
+                              </div>
+                            );
+                          })
+                        )}
+                      </div>
+
+                      <div className="custom-select-footer">
+                        <span>Select database for highlights</span>
+                        <button
+                          type="button"
+                          className="custom-select-refresh-btn"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            loadNotionStatus();
+                          }}
+                          disabled={isLoadingNotion}
+                          title="Reload database list from Notion"
+                        >
+                          <RefreshCw size={10} className={isLoadingNotion ? 'pulse-dot' : ''} />
+                          Reload
+                        </button>
+                      </div>
+                    </div>
+                  )}
+                </div>
               </div>
             )}
           </section>
 
-          {/* System Status Card */}
-          <section className="card">
+          {/* Highlights List Card — Lower z-index so dropdown always overlays */}
+          <section className="card" style={{ flex: 1, display: 'flex', flexDirection: 'column', position: 'relative', zIndex: 1 }}>
             <div className="card-title">
               <div className="card-title-left">
-                <Server size={13} />
-                <span>System Status</span>
-              </div>
-            </div>
-
-            <div className="status-row">
-              <span className="status-label">Backend Server</span>
-              {backendStatus === 'connected' ? (
-                <span className="status-badge ok">
-                  <span className="pulse-dot" />
-                  Online {latencyMs ? `(${latencyMs}ms)` : ''}
+                <Layers size={12} />
+                <span>
+                  Recent Highlights ({recentHighlights.length}
+                  {highlights.length > 5 ? ` of ${highlights.length}` : ''})
                 </span>
-              ) : (
-                <span className="status-badge error">
-                  <AlertCircle size={10} />
-                  Offline
-                </span>
-              )}
-            </div>
-
-            <div className="status-row">
-              <span className="status-label">Context Menu</span>
-              <span className="status-badge ok">
-                <CheckCircle2 size={10} />
-                &quot;Send to Notion&quot; Ready
-              </span>
-            </div>
-          </section>
-
-          {/* Highlights List Card */}
-          <section className="card">
-            <div className="card-title">
-              <div className="card-title-left">
-                <Layers size={13} />
-                <span>Saved Highlights ({highlights.length})</span>
               </div>
               <button
                 onClick={loadHighlights}
                 className="btn-icon"
-                style={{ padding: '3px' }}
+                style={{ padding: '2px' }}
                 title="Reload highlights"
               >
                 <RefreshCw size={11} className={isLoadingHighlights ? 'pulse-dot' : ''} />
@@ -428,15 +500,15 @@ export const App: React.FC = () => {
 
             {highlights.length === 0 ? (
               <div className="empty-state">
-                <Sparkles size={24} style={{ opacity: 0.5 }} />
-                <span>No highlights saved yet.</span>
-                <span style={{ fontSize: '11px', color: 'var(--text-muted)' }}>
-                  Highlight text on any webpage and right-click &quot;Send to Notion&quot;.
+                <Sparkles size={18} style={{ opacity: 0.4 }} />
+                <span style={{ fontSize: '11px' }}>No highlights saved yet.</span>
+                <span style={{ fontSize: '10px', color: 'var(--text-muted)' }}>
+                  Highlight text on any page ➔ Right click ➔ &quot;Send to Notion&quot;.
                 </span>
               </div>
             ) : (
               <div className="highlights-list">
-                {highlights.map((item) => (
+                {recentHighlights.map((item) => (
                   <div key={item.id} className="highlight-item">
                     <div className="highlight-snippet">&quot;{item.content}&quot;</div>
                     <div className="highlight-meta">
@@ -444,14 +516,35 @@ export const App: React.FC = () => {
                         <FileText size={10} style={{ display: 'inline', marginRight: '3px' }} />
                         {item.source?.title || 'Article'}
                       </span>
-                      <span
-                        className={`status-badge ${
-                          item.status === 'SYNCED' ? 'ok' : item.status === 'FAILED' ? 'error' : 'pending'
-                        }`}
-                        style={{ fontSize: '9px', padding: '1px 5px' }}
-                      >
-                        {item.status}
-                      </span>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                        {item.source?.notionPageId && (
+                          <a
+                            href={`https://notion.so/${item.source.notionPageId.replace(/-/g, '')}`}
+                            target="_blank"
+                            rel="noreferrer"
+                            style={{
+                              display: 'inline-flex',
+                              alignItems: 'center',
+                              gap: '2px',
+                              color: 'var(--accent)',
+                              textDecoration: 'none',
+                              fontSize: '10px',
+                            }}
+                            title="Open in Notion"
+                          >
+                            <ExternalLink size={10} />
+                            Open
+                          </a>
+                        )}
+                        <span
+                          className={`status-badge ${
+                            item.status === 'SYNCED' ? 'ok' : item.status === 'FAILED' ? 'error' : 'pending'
+                          }`}
+                          style={{ fontSize: '8px', padding: '1px 4px' }}
+                        >
+                          {item.status}
+                        </span>
+                      </div>
                     </div>
                   </div>
                 ))}
@@ -461,102 +554,78 @@ export const App: React.FC = () => {
         </>
       ) : (
         /* Unauthenticated View: Login / Register */
-        <>
-          <section className="card">
-            <div className="tabs-header">
-              <button
-                className={`tab-btn ${authMode === 'login' ? 'active' : ''}`}
-                onClick={() => {
-                  setAuthMode('login');
-                  setAuthError(null);
-                }}
-              >
-                Sign In
-              </button>
-              <button
-                className={`tab-btn ${authMode === 'register' ? 'active' : ''}`}
-                onClick={() => {
-                  setAuthMode('register');
-                  setAuthError(null);
-                }}
-              >
-                Create Account
-              </button>
+        <section className="card">
+          <div className="tabs-header">
+            <button
+              className={`tab-btn ${authMode === 'login' ? 'active' : ''}`}
+              onClick={() => {
+                setAuthMode('login');
+                setAuthError(null);
+              }}
+            >
+              Sign In
+            </button>
+            <button
+              className={`tab-btn ${authMode === 'register' ? 'active' : ''}`}
+              onClick={() => {
+                setAuthMode('register');
+                setAuthError(null);
+              }}
+            >
+              Register
+            </button>
+          </div>
+
+          {authError && (
+            <div className="alert-error" style={{ marginBottom: '10px' }}>
+              <AlertCircle size={12} />
+              <span>{authError}</span>
             </div>
+          )}
 
-            <form onSubmit={handleAuthSubmit} className="auth-form">
-              {authError && (
-                <div className="alert-error">
-                  <AlertCircle size={14} style={{ flexShrink: 0 }} />
-                  <span>{authError}</span>
-                </div>
-              )}
-
-              <div className="form-group">
-                <label className="form-label">Email Address</label>
-                <div className="input-wrapper">
-                  <Mail size={14} className="input-icon" />
-                  <input
-                    type="email"
-                    className="input-field"
-                    placeholder="you@example.com"
-                    value={email}
-                    onChange={(e) => setEmail(e.target.value)}
-                    required
-                  />
-                </div>
-              </div>
-
-              <div className="form-group">
-                <label className="form-label">Password</label>
-                <div className="input-wrapper">
-                  <Lock size={14} className="input-icon" />
-                  <input
-                    type="password"
-                    className="input-field"
-                    placeholder="At least 8 characters"
-                    value={password}
-                    onChange={(e) => setPassword(e.target.value)}
-                    required
-                  />
-                </div>
-              </div>
-
-              <button type="submit" className="btn" disabled={isSubmittingAuth}>
-                {isSubmittingAuth ? (
-                  <>
-                    <span className="pulse-dot" />
-                    <span>{authMode === 'login' ? 'Signing In...' : 'Creating Account...'}</span>
-                  </>
-                ) : (
-                  <span>{authMode === 'login' ? 'Sign In' : 'Create Free Account'}</span>
-                )}
-              </button>
-            </form>
-          </section>
-
-          {/* Quick Guide Card */}
-          <section className="card">
-            <div className="card-title">
-              <div className="card-title-left">
-                <Sparkles size={13} />
-                <span>How It Works</span>
+          <form onSubmit={handleAuthSubmit} className="auth-form">
+            <div className="form-group">
+              <label className="form-label">Email</label>
+              <div className="input-wrapper">
+                <Mail size={14} className="input-icon" />
+                <input
+                  type="email"
+                  className="input-field"
+                  placeholder="you@example.com"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  disabled={isSubmittingAuth}
+                  required
+                />
               </div>
             </div>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', fontSize: '11px', color: 'var(--text-secondary)' }}>
-              <div>1. Sign in or create a free account above.</div>
-              <div>2. Connect your Notion workspace and pick a database.</div>
-              <div>3. Highlight text on any web page ➔ Right-click <strong>&quot;Send to Notion&quot;</strong>.</div>
-              <div>4. Highlights from the same page are automatically grouped together in Notion!</div>
+
+            <div className="form-group">
+              <label className="form-label">Password</label>
+              <div className="input-wrapper">
+                <Lock size={14} className="input-icon" />
+                <input
+                  type="password"
+                  className="input-field"
+                  placeholder="••••••••"
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  disabled={isSubmittingAuth}
+                  required
+                />
+              </div>
             </div>
-          </section>
-        </>
+
+            <button type="submit" className="btn" disabled={isSubmittingAuth} style={{ marginTop: '4px' }}>
+              {isSubmittingAuth
+                ? 'Please wait...'
+                : authMode === 'login'
+                  ? 'Sign In to Extension'
+                  : 'Create Free Account'}
+            </button>
+          </form>
+        </section>
       )}
-
-      {/* Footer */}
-      <footer className="footer">
-        <span>Notion Highlight Sync • MV3</span>
-      </footer>
     </div>
   );
 };
