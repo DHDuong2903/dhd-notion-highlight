@@ -22,7 +22,9 @@ export const highlightResponseSchema = z.object({
   highlightId: z.string().optional(),
   sourceId: z.string().optional(),
   notionPageId: z.string().optional(),
+  notionUrl: z.string().optional(),
   isNewSource: z.boolean().optional(),
+  status: z.string().optional(),
   message: z.string().optional(),
 });
 

@@ -8,6 +8,8 @@
     "dev": "pnpm -r --parallel run dev",
     "typecheck": "pnpm -r run typecheck",
     "test": "vitest run",
+    "db:studio": "pnpm --filter @notion-highlight/api db:studio",
+    "db:push": "pnpm --filter @notion-highlight/api db:push",
     "format": "prettier --write \"**/*.{ts,tsx,js,json,md}\""
   },
   "devDependencies": {

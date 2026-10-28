@@ -8,6 +8,17 @@ const envSchema = z.object({
   PORT: z.coerce.number().default(3001),
   HOST: z.string().default('0.0.0.0'),
   CORS_ORIGIN: z.string().default('*'),
+  // Phase 2: Database
+  DATABASE_URL: z.string().optional(),
+  // Phase 2: Session
+  SESSION_SECRET: z.string().default('dev-secret-please-change-in-production'),
+  // Notion API (Phase 1)
+  NOTION_API_KEY: z.string().optional(),
+  NOTION_DATABASE_ID: z.string().optional(),
+  // Phase 4: Notion OAuth
+  NOTION_CLIENT_ID: z.string().optional(),
+  NOTION_CLIENT_SECRET: z.string().optional(),
+  NOTION_REDIRECT_URI: z.string().default('http://localhost:3001/api/notion/callback'),
 });
 
 function loadEnv() {
