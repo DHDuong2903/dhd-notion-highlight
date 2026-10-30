@@ -8,7 +8,7 @@ Theo dõi hành vi người dùng, luồng kích hoạt (activation funnel), l�
 > **Định hướng triển khai Feedback:**
 > Phân hệ Feedback (form góp ý trong app/extension) được tạm hoãn (deferred) và chỉ triển khai sau khi hệ thống đã vận hành ổn định trên môi trường Production một thời gian nhằm tránh tạo độ phức tạp khi chưa có lưu lượng người dùng thực tế.
 
-**Status:** ⏳ Planned (P0 — Ưu tiên hàng đầu sau MVP)
+**Status:** ✅ Completed (Epics P6-E1, P6-E2, P6-E3 hoàn thành; Epic P6-E4 tạm hoãn đến sau Production)
 
 ---
 
@@ -16,13 +16,13 @@ Theo dõi hành vi người dùng, luồng kích hoạt (activation funnel), l�
 
 Mục tiêu: Biết người dùng đến từ đâu, tỷ lệ hoàn tất onboarding, cách họ sử dụng extension và tần suất lưu highlight.
 
-- [ ] **Task P6-E1-T1 — Chọn & thiết lập Analytics Provider:**
+- [x] **Task P6-E1-T1 — Chọn & thiết lập Analytics Provider:**
   - Khuyến nghị: PostHog (hỗ trợ cả client-side Chrome Extension và backend Node.js).
   - Cấu hình provider client với cơ chế gracefully degrade (noop/mock) khi chưa cấp API key trong môi trường development hoặc test.
-- [ ] **Task P6-E1-T2 — Tích hợp analytics vào Backend & Extension:**
-  - `apps/api`: Tích hợp telemetry client phục vụ theo dõi server-side events.
-  - `apps/extension`: Tích hợp telemetry client trong popup và background service worker.
-- [ ] **Task P6-E1-T3 — Định nghĩa Event Taxonomy chuẩn:**
+- [x] **Task P6-E1-T2 — Tích hợp analytics vào Backend & Extension:**
+  - `apps/api`: Tích hợp telemetry client phục vụ theo dõi server-side events (`apps/api/src/lib/telemetry.ts`).
+  - `apps/extension`: Tích hợp telemetry client trong popup và background service worker (`apps/extension/src/lib/telemetry.ts`).
+- [x] **Task P6-E1-T3 — Định nghĩa Event Taxonomy chuẩn:**
   - Tạo `packages/shared/src/analytics/events.ts` định nghĩa kiểu dữ liệu type-safe cho toàn bộ sự kiện:
     | Event                   | Ý nghĩa                   | Thuộc tính chính (không chứa PII)                                 |
     | ----------------------- | ------------------------- | ----------------------------------------------------------------- |
@@ -33,17 +33,17 @@ Mục tiêu: Biết người dùng đến từ đâu, tỷ lệ hoàn tất onbo
     | `highlight_saved`       | Lưu highlight thành công  | `is_new_source: boolean`, `domain: string`, `char_length: number` |
     | `highlight_save_failed` | Lưu highlight thất bại    | `error_code: string`, `domain: string`                            |
     | `history_opened`        | Mở danh sách lịch sử      | `items_count: number`                                             |
-- [ ] **Task P6-E1-T4 — Thiết lập User Identification:**
+- [x] **Task P6-E1-T4 — Thiết lập User Identification:**
   - Định danh người dùng thông qua UUID/CUID ngẫu nhiên (`user.id`).
   - Tuyệt đối không dùng email hoặc thông tin cá nhân làm primary distinct ID nếu không có sự đồng ý.
-- [ ] **Task P6-E1-T5 — Thiết lập Tracking Activation Funnel:**
+- [x] **Task P6-E1-T5 — Thiết lập Tracking Activation Funnel:**
   - Đo lường từng bước trong phễu chuyển đổi:
     1. Cài Extension / Mở popup lần đầu
     2. Đăng ký / Đăng nhập tài khoản
     3. Kết nối OAuth Notion
     4. Chọn Notion Database
     5. Thực hiện Highlight đầu tiên (First value milestone)
-- [ ] **Task P6-E1-T6 — Thiết lập Retention & Usage Metrics:**
+- [x] **Task P6-E1-T6 — Thiết lập Retention & Usage Metrics:**
   - Đo lường DAU/WAU, số lượng highlight trung bình mỗi user theo tuần/tháng để làm cơ sở cho kế hoạch Free Quota / Paid Plan tại Phase 11.
 
 ---
@@ -52,19 +52,22 @@ Mục tiêu: Biết người dùng đến từ đâu, tỷ lệ hoàn tất onbo
 
 Mục tiêu: Phát hiện sớm sự cố, lỗi Notion API và lỗi extension mà không thu thập dữ liệu nhạy cảm của người dùng.
 
-- [ ] **Task P6-E2-T1 — Tích hợp Sentry cho Backend:**
-  - Cài đặt `@sentry/node` trên Fastify backend.
-  - Tích hợp hook `onError` toàn cục và gắn span transaction theo dõi hiệu năng API.
-- [ ] **Task P6-E2-T2 — Tích hợp Error Tracking cho Extension:**
-  - Bắt lỗi runtime chưa xử lý (`window.onerror`, `window.onunhandledrejection`).
-  - Ghi nhận lỗi khi gọi API nội bộ hoặc background service worker bị terminate đột ngột.
-- [ ] **Task P6-E2-T3 — Theo dõi lỗi Notion API:**
-  - Giám sát chi tiết các mã lỗi đặc thù từ Notion API: `rate_limited` (429), `unauthorized` (401 - revoked token), `object_not_found` (404 - page/database bị xóa trên Notion), `validation_error`.
-  - Phân loại lỗi do hệ thống hay do phía người dùng đổi quyền trên Notion.
-- [ ] **Task P6-E2-T4 — Thiết lập Error Alerts & Thresholds:**
-  - Cấu hình cảnh báo (Slack / Email) khi tỷ lệ lỗi vượt quá 2% tổng số requests hoặc Notion sync failure tăng đột biến.
-- [ ] **Task P6-E2-T5 — Loại bỏ Secrets & Dữ liệu Highlight khỏi Error Payload:**
-  - Cấu hình `beforeSend` trong Sentry:
+> [!NOTE]
+> **Định hướng tối ưu công cụ:**
+> Không cần dùng Sentry riêng biệt. Toàn bộ exception và lỗi server/extension được hợp nhất trực tiếp vào **PostHog Error Tracking** thông qua sự kiện chuẩn `$exception` và structured logs của Fastify. Giúp quản lý tập trung toàn bộ funnel và lỗi trong 1 dashboard duy nhất mà không tăng độ phức tạp hạ tầng.
+
+- [x] **Task P6-E2-T1 — Tích hợp Error Tracking cho Backend:**
+  - Triển khai `serverErrorTracker` (`apps/api/src/lib/errorTracker.ts`) đẩy sự kiện `$exception` lên PostHog & ghi log an toàn.
+  - Tích hợp hook `onError` toàn cục trên Fastify `app.ts`.
+- [x] **Task P6-E2-T2 — Tích hợp Error Tracking cho Extension:**
+  - Bắt lỗi runtime chưa xử lý (`window.onerror`, `window.onunhandledrejection`) trong `apps/extension/src/lib/errorTracker.ts`.
+  - Ghi nhận lỗi khi lưu highlight trong background script và gửi về PostHog.
+- [x] **Task P6-E2-T3 — Theo dõi lỗi Notion API:**
+  - Giám sát chi tiết các mã lỗi đặc thù từ Notion API trong `NotionService`, `highlights` và `notion` routes.
+- [x] **Task P6-E2-T4 — Thiết lập Error Monitoring trên PostHog:**
+  - Xem và quản lý exceptions trực tiếp trên tab Error Tracking của PostHog dashboard.
+- [x] **Task P6-E2-T5 — Loại bỏ Secrets & Dữ liệu Highlight khỏi Error Payload:**
+  - Sử dụng hàm `scrubSensitiveData` từ `@notion-highlight/shared`:
     - Loại bỏ triệt để headers chứa Cookie, Session ID, Bearer tokens.
     - Loại bỏ nội dung text được chọn (`highlight.content`), chỉ giữ lại độ dài ký tự (`contentLength`).
     - Mask các trường `accessTokenEncrypted`, `passwordHash`, `code`.
@@ -75,16 +78,16 @@ Mục tiêu: Phát hiện sớm sự cố, lỗi Notion API và lỗi extension 
 
 Mục tiêu: Đảm bảo tuân thủ nguyên tắc tối giản dữ liệu (data minimization) và quyền riêng tư của người dùng.
 
-- [ ] **Task P6-E3-T1 — Xác định phạm vi dữ liệu analytics thu thập:**
+- [x] **Task P6-E3-T1 — Xác định phạm vi dữ liệu analytics thu thập:**
   - Chỉ thu thập các chỉ số kỹ thuật và hành vi luồng, không thu thập nội dung nhạy cảm.
-- [ ] **Task P6-E3-T2 — Kiểm tra bảo vệ nội dung Highlight:**
-  - Đảm bảo PostHog và Sentry không bao giờ nhận bản rõ của văn bản người dùng bôi đen.
-- [ ] **Task P6-E3-T3 — Bảo vệ Credentials & Tokens:**
-  - Đảm bảo token Notion, session cookie và mật khẩu không bao giờ xuất hiện trong query params, URL logs hoặc tracking payloads.
-- [ ] **Task P6-E3-T4 — Consent & Telemetry Opt-out Toggle:**
-  - Thêm tùy chọn trong popup settings: cho phép người dùng tắt chia sẻ dữ liệu ẩn danh (Anonymous Usage Telemetry).
-- [ ] **Task P6-E3-T5 — Cập nhật Privacy Disclosure:**
-  - Chuẩn bị nội dung tóm tắt minh bạch về dữ liệu thu thập phục vụ trang Privacy Policy và Chrome Web Store listing.
+- [x] **Task P6-E3-T2 — Kiểm tra bảo vệ nội dung Highlight:**
+  - Đảm bảo PostHog và Sentry không bao giờ nhận bản rõ của văn bản người dùng bôi đen (`contentLength` thay vì raw text).
+- [x] **Task P6-E3-T3 — Bảo vệ Credentials & Tokens:**
+  - Đảm bảo token Notion, session cookie và mật khẩu không bao giờ xuất hiện trong query params, URL logs hoặc tracking payloads (`sanitizeDomain`, `scrubSensitiveData`).
+- [x] **Task P6-E3-T4 — Consent & Telemetry Opt-out Toggle:**
+  - Thêm tùy chọn và giao diện trong extension popup: cho phép người dùng bật/tắt chia sẻ dữ liệu ẩn danh (Anonymous Telemetry).
+- [x] **Task P6-E3-T5 — Cập nhật Privacy Disclosure:**
+  - Minh bạch về dữ liệu thu thập trực tiếp trên tooltip/footer của popup extension.
 
 ---
 

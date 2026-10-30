@@ -15,8 +15,15 @@ import {
   AlertCircle,
   Sun,
   Moon,
+  ShieldCheck,
 } from 'lucide-react';
 import { api, type UserProfile, type HighlightItem } from '../api/client.js';
+import { AnalyticsEvents } from '@notion-highlight/shared';
+import { extensionTelemetry } from '../lib/telemetry.js';
+import { extensionErrorTracker } from '../lib/errorTracker.js';
+
+// Initialize extension error tracker (Phase 6)
+extensionErrorTracker.init();
 
 interface NotionStatus {
   isConnected: boolean;
@@ -84,6 +91,37 @@ export const App: React.FC = () => {
   const [isSavingDb, setIsSavingDb] = useState(false);
   const [notionMsg, setNotionMsg] = useState<string | null>(null);
 
+  // Privacy & Telemetry State (Phase 6)
+  const [telemetryEnabled, setTelemetryEnabled] = useState(true);
+  const [testPostHogStatus, setTestPostHogStatus] = useState<
+    'idle' | 'sending' | 'success' | 'error'
+  >('idle');
+
+  useEffect(() => {
+    extensionTelemetry.isEnabled().then(setTelemetryEnabled);
+  }, []);
+
+  const handleToggleTelemetry = async () => {
+    const next = !telemetryEnabled;
+    setTelemetryEnabled(next);
+    await extensionTelemetry.setEnabled(next);
+  };
+
+  const handleTestPostHog = async (e: React.MouseEvent) => {
+    e.stopPropagation();
+    setTestPostHogStatus('sending');
+    try {
+      await extensionTelemetry.track('history_opened', {
+        itemsCount: highlights.length,
+      });
+      setTestPostHogStatus('success');
+      setTimeout(() => setTestPostHogStatus('idle'), 3000);
+    } catch {
+      setTestPostHogStatus('error');
+      setTimeout(() => setTestPostHogStatus('idle'), 3000);
+    }
+  };
+
   // Custom Dropdown State
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
@@ -119,6 +157,10 @@ export const App: React.FC = () => {
     try {
       const list = await api.highlights.list();
       setHighlights(list);
+      // Track history opened (Phase 6)
+      await extensionTelemetry.track(AnalyticsEvents.HISTORY_OPENED, {
+        itemsCount: list.length,
+      });
     } catch (err) {
       console.warn('Failed to fetch highlights:', err);
     } finally {
@@ -158,6 +200,7 @@ export const App: React.FC = () => {
       const currentUser = await api.auth.getMe();
       setUser(currentUser);
       if (currentUser) {
+        extensionTelemetry.identify(currentUser.id);
         await Promise.all([loadHighlights(), loadNotionStatus()]);
       }
     } catch (err) {
@@ -198,6 +241,7 @@ export const App: React.FC = () => {
       }
 
       setUser(authedUser);
+      extensionTelemetry.identify(authedUser.id);
       setEmail('');
       setPassword('');
       await Promise.all([loadHighlights(), loadNotionStatus()]);
@@ -684,6 +728,55 @@ export const App: React.FC = () => {
           </form>
         </section>
       )}
+
+      {/* Privacy & Anonymous Telemetry Controls (Phase 6 Epic P6-E3) */}
+      <footer
+        className="privacy-footer"
+        title="Helps improve extension reliability and error tracking without collecting personal data or highlight text."
+      >
+        <div className="privacy-toggle-label" onClick={handleToggleTelemetry}>
+          <ShieldCheck
+            size={13}
+            style={{ color: telemetryEnabled ? 'var(--success)' : 'var(--text-muted)' }}
+          />
+          <span>Anonymous Telemetry</span>
+        </div>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+          <button
+            type="button"
+            onClick={handleTestPostHog}
+            disabled={testPostHogStatus === 'sending'}
+            style={{
+              background: 'transparent',
+              border: '1px solid var(--border-color)',
+              borderRadius: '4px',
+              padding: '2px 6px',
+              fontSize: '10px',
+              color: testPostHogStatus === 'success' ? 'var(--success)' : 'var(--text-muted)',
+              cursor: 'pointer',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '4px',
+            }}
+            title="Send a live test event to PostHog from the extension"
+          >
+            {testPostHogStatus === 'sending' && <RefreshCw size={10} className="spin" />}
+            {testPostHogStatus === 'success' && (
+              <Check size={10} style={{ color: 'var(--success)' }} />
+            )}
+            <span>{testPostHogStatus === 'success' ? 'Sent!' : 'Test PostHog'}</span>
+          </button>
+          <div
+            className={`privacy-switch ${telemetryEnabled ? 'active' : ''}`}
+            onClick={handleToggleTelemetry}
+            role="switch"
+            aria-checked={telemetryEnabled}
+            tabIndex={0}
+          >
+            <div className="privacy-switch-knob" />
+          </div>
+        </div>
+      </footer>
     </div>
   );
 };

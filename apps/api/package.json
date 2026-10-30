@@ -10,6 +10,7 @@
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
     "test:notion": "tsx src/scripts/test-notion.ts",
+    "test:posthog": "tsx src/scripts/test-posthog.ts",
     "db:studio": "prisma studio",
     "db:push": "prisma db push"
   },

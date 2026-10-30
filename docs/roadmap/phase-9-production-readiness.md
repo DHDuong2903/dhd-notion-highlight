@@ -102,4 +102,3 @@ Hoàn thiện các văn bản pháp lý bắt buộc trước khi đưa sản ph
 2. Kiểm tra bảo mật hoàn tất (không rò rỉ secret, phân quyền cách ly triệt để giữa các user).
 3. Đầy đủ hệ thống giám sát (Health check, Sentry alerts, logging).
 4. Trang Privacy Policy & Terms of Service được công khai trên website.
-

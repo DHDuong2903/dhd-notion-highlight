@@ -1,7 +1,13 @@
 import { FastifyPluginAsync } from 'fastify';
 import argon2 from 'argon2';
 import { prisma } from '../lib/prisma.js';
-import { AppErrorCode, registerSchema, loginSchema } from '@notion-highlight/shared';
+import {
+  AppErrorCode,
+  registerSchema,
+  loginSchema,
+  AnalyticsEvents,
+} from '@notion-highlight/shared';
+import { serverTelemetry } from '../lib/telemetry.js';
 
 export const authRoutes: FastifyPluginAsync = async (fastify) => {
   // POST /api/auth/register
@@ -36,6 +42,10 @@ export const authRoutes: FastifyPluginAsync = async (fastify) => {
 
     // Set session
     request.session.userId = user.id;
+
+    // Track registration event (Phase 6)
+    await serverTelemetry.track(AnalyticsEvents.USER_REGISTERED, { authMethod: 'email' }, user.id);
+    await serverTelemetry.identify(user.id, { plan: user.plan });
 
     return reply.status(201).send({ user });
   });
@@ -76,6 +86,9 @@ export const authRoutes: FastifyPluginAsync = async (fastify) => {
 
     // Set session
     request.session.userId = user.id;
+
+    // Track login event (Phase 6)
+    await serverTelemetry.track(AnalyticsEvents.USER_LOGGED_IN, { authMethod: 'email' }, user.id);
 
     return reply.status(200).send({
       user: { id: user.id, email: user.email, plan: user.plan },

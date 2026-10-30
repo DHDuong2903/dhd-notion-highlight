@@ -8,11 +8,23 @@ import { prototypeRoutes } from './routes/prototype.js';
 import { authRoutes } from './routes/auth.js';
 import { highlightRoutes } from './routes/highlights.js';
 import { notionRoutes } from './routes/notion.js';
+import { telemetryRoutes } from './routes/telemetry.js';
 import { authPlugin } from './middleware/auth.js';
 import { env } from './config/env.js';
+import { serverErrorTracker } from './lib/errorTracker.js';
 
 export function buildApp(opts: FastifyServerOptions = {}): FastifyInstance {
   const app = fastify(opts);
+
+  // Global Error Hook (Phase 6 - Error Tracking)
+  app.addHook('onError', async (request, _reply, error) => {
+    await serverErrorTracker.captureException(error, {
+      userId: request.sessionUser?.id,
+      url: request.url,
+      method: request.method,
+      statusCode: error.statusCode || 500,
+    });
+  });
 
   // Plugins
   app.register(sensible);
@@ -50,6 +62,7 @@ export function buildApp(opts: FastifyServerOptions = {}): FastifyInstance {
   app.register(authRoutes);
   app.register(highlightRoutes);
   app.register(notionRoutes);
+  app.register(telemetryRoutes);
 
   return app;
 }

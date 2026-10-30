@@ -1,4 +1,10 @@
 import { api } from '../api/client.js';
+import { AnalyticsEvents, sanitizeDomain } from '@notion-highlight/shared';
+import { extensionTelemetry } from '../lib/telemetry.js';
+import { extensionErrorTracker } from '../lib/errorTracker.js';
+
+// Initialize background error tracking (Phase 6)
+extensionErrorTracker.init();
 
 const CONTEXT_MENU_ID = 'send-to-notion';
 const notifUrlMap = new Map<string, string>();
@@ -179,6 +185,14 @@ chrome.contextMenus.onClicked.addListener(async (info, tab) => {
 
     console.log('✅ [Background] Highlight saved successfully:', result);
 
+    // Track highlight saved in telemetry (Phase 6)
+    await extensionTelemetry.track(AnalyticsEvents.HIGHLIGHT_SAVED, {
+      isNewSource: !!result.isNewSource,
+      domain: sanitizeDomain(pageUrl),
+      charLength: selectedText.length,
+      status: result.status === 'SYNCED' ? 'SYNCED' : 'PENDING',
+    });
+
     setBadge('OK', '#10b981', 3500);
 
     const groupInfo = result.isNewSource
@@ -198,6 +212,17 @@ chrome.contextMenus.onClicked.addListener(async (info, tab) => {
     showInPageToast(tab?.id, 'success', `${groupInfo}!`, result.notionUrl);
   } catch (error: any) {
     console.error('❌ [Background] Failed to save highlight:', error);
+
+    // Track failure in telemetry & report error (Phase 6)
+    await extensionTelemetry.track(AnalyticsEvents.HIGHLIGHT_SAVE_FAILED, {
+      errorCode: error?.code || 'UNKNOWN_ERROR',
+      domain: sanitizeDomain(pageUrl),
+      charLength: selectedText.length,
+    });
+    extensionErrorTracker.captureError(error, {
+      context: 'context_menu_save_highlight',
+      domain: sanitizeDomain(pageUrl),
+    });
 
     if (error?.status === 401 || error?.code === 'UNAUTHORIZED') {
       setBadge('AUTH', '#f59e0b', 5000);

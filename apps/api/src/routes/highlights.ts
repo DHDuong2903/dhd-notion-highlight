@@ -4,7 +4,14 @@ import { canonicalizeUrl } from '../utils/url.js';
 import { requireAuth } from '../middleware/auth.js';
 import { decryptToken } from '../utils/crypto.js';
 import { NotionService } from '../services/notion.js';
-import { AppErrorCode, createHighlightSchema } from '@notion-highlight/shared';
+import {
+  AppErrorCode,
+  createHighlightSchema,
+  AnalyticsEvents,
+  sanitizeDomain,
+} from '@notion-highlight/shared';
+import { serverTelemetry } from '../lib/telemetry.js';
+import { serverErrorTracker } from '../lib/errorTracker.js';
 
 // Quota limits
 const QUOTA = {
@@ -156,6 +163,18 @@ export const highlightRoutes: FastifyPluginAsync = async (fastify) => {
           },
         });
 
+        // Track successful highlight saved (Phase 6)
+        await serverTelemetry.track(
+          AnalyticsEvents.HIGHLIGHT_SAVED,
+          {
+            isNewSource,
+            domain: sanitizeDomain(url),
+            charLength: text.length,
+            status: 'SYNCED',
+          },
+          sessionUser.id,
+        );
+
         const notionUrl = `https://notion.so/${notionPageId.replace(/-/g, '')}`;
 
         return reply.status(200).send({
@@ -186,6 +205,29 @@ export const highlightRoutes: FastifyPluginAsync = async (fastify) => {
           },
         });
 
+        // Track failed highlight sync (Phase 6)
+        await serverTelemetry.track(
+          AnalyticsEvents.HIGHLIGHT_SAVE_FAILED,
+          {
+            errorCode: err?.code || 'NOTION_SYNC_FAILED',
+            domain: sanitizeDomain(url),
+            charLength: text.length,
+          },
+          sessionUser.id,
+        );
+
+        // Report Notion sync exception to Sentry (Phase 6)
+        await serverErrorTracker.captureException(err, {
+          userId: sessionUser.id,
+          highlightId: highlight.id,
+          sourceId: source.id,
+          domain: sanitizeDomain(url),
+          tags: {
+            component: 'notion_sync',
+            errorCode: err?.code || 'UNKNOWN',
+          },
+        });
+
         return reply.status(200).send({
           success: true,
           highlightId: highlight.id,
@@ -207,6 +249,18 @@ export const highlightRoutes: FastifyPluginAsync = async (fastify) => {
         errorCode: 'NOTION_NOT_CONNECTED',
       },
     });
+
+    // Track pending highlight save (Phase 6)
+    await serverTelemetry.track(
+      AnalyticsEvents.HIGHLIGHT_SAVED,
+      {
+        isNewSource,
+        domain: sanitizeDomain(url),
+        charLength: text.length,
+        status: 'PENDING',
+      },
+      sessionUser.id,
+    );
 
     return reply.status(202).send({
       success: true,

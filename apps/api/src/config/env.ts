@@ -19,6 +19,16 @@ const envSchema = z.object({
   NOTION_CLIENT_ID: z.string().optional(),
   NOTION_CLIENT_SECRET: z.string().optional(),
   NOTION_REDIRECT_URI: z.string().default('http://localhost:3001/api/notion/callback'),
+  // Phase 6: Analytics & Error Tracking (via PostHog)
+  POSTHOG_API_KEY: z.string().optional(),
+  POSTHOG_HOST: z.string().default('https://us.i.posthog.com'),
+  TELEMETRY_ENABLED: z
+    .preprocess((val) => {
+      if (typeof val === 'string') return val === 'true' || val === '1';
+      if (typeof val === 'boolean') return val;
+      return true;
+    }, z.boolean())
+    .default(true),
 });
 
 function loadEnv() {

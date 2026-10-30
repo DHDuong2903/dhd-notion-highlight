@@ -60,4 +60,3 @@ Cung cấp giao diện rõ ràng để người dùng xem thông tin cá nhân v
 2. Quản lý trạng thái đăng nhập, đổi database, disconnect Notion và logout hoạt động ổn định trên cả web và extension.
 3. Cơ chế xóa tài khoản hoạt động triệt để (cascade delete sạch dữ liệu).
 4. Các test suite auth và regression test chạy thành công.
-

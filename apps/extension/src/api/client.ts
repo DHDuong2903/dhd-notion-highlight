@@ -193,6 +193,22 @@ class ApiClient {
       });
     },
   };
+
+  // Telemetry endpoints (Phase 6)
+  public telemetry = {
+    getConfig: async () => {
+      return this.request<{ enabled: boolean; host: string; hasKey: boolean }>(
+        '/api/telemetry/config',
+      );
+    },
+
+    track: async (event: string, properties: Record<string, any> = {}) => {
+      return this.request<{ success: boolean }>('/api/telemetry', {
+        method: 'POST',
+        body: JSON.stringify({ event, properties }),
+      });
+    },
+  };
 }
 
 export const api = new ApiClient();

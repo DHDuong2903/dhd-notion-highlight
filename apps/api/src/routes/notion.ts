@@ -9,7 +9,10 @@ import {
   selectDatabaseSchema,
   createDatabaseSchema,
   type NotionStatusResponse,
+  AnalyticsEvents,
 } from '@notion-highlight/shared';
+import { serverTelemetry } from '../lib/telemetry.js';
+import { serverErrorTracker } from '../lib/errorTracker.js';
 
 export const notionRoutes: FastifyPluginAsync = async (fastify) => {
   // GET /api/notion/connect — Generates OAuth authorization URL
@@ -134,6 +137,13 @@ export const notionRoutes: FastifyPluginAsync = async (fastify) => {
           accessTokenEncrypted,
         },
       });
+
+      // Track Notion connected event (Phase 6)
+      await serverTelemetry.track(
+        AnalyticsEvents.NOTION_CONNECTED,
+        { workspaceId: tokenData.workspace_id || 'unknown' },
+        userId,
+      );
 
       return reply.status(200).send(`
         <!DOCTYPE html>
@@ -334,12 +344,24 @@ export const notionRoutes: FastifyPluginAsync = async (fastify) => {
 
       const title = await notion.getDatabaseTitle(targetDbId);
 
+      // Track database selection (Phase 6)
+      await serverTelemetry.track(
+        AnalyticsEvents.DATABASE_SELECTED,
+        { isAutoCreated: false, databaseIdLength: targetDbId.length },
+        sessionUser.id,
+      );
+
       return reply.status(200).send({
         success: true,
         databaseId: targetDbId,
         databaseTitle: title,
       });
     } catch (err: any) {
+      await serverErrorTracker.captureException(err, {
+        userId: sessionUser.id,
+        tags: { component: 'notion_select_database' },
+      });
+
       return reply.status(err?.statusCode || 500).send({
         error: {
           code: err?.code || AppErrorCode.NOTION_API_ERROR,
@@ -384,6 +406,13 @@ export const notionRoutes: FastifyPluginAsync = async (fastify) => {
           data: { databaseId: newDb.id },
         });
 
+        // Track auto-created database (Phase 6)
+        await serverTelemetry.track(
+          AnalyticsEvents.DATABASE_SELECTED,
+          { isAutoCreated: true, databaseIdLength: newDb.id.length },
+          sessionUser.id,
+        );
+
         return reply.status(201).send({
           success: true,
           databaseId: newDb.id,
@@ -391,6 +420,11 @@ export const notionRoutes: FastifyPluginAsync = async (fastify) => {
           alreadyExisted: !!newDb.alreadyExisted,
         });
       } catch (err: any) {
+        await serverErrorTracker.captureException(err, {
+          userId: sessionUser.id,
+          tags: { component: 'notion_create_database' },
+        });
+
         return reply.status(err?.statusCode || 500).send({
           error: {
             code: err?.code || AppErrorCode.NOTION_API_ERROR,
