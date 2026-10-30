@@ -1,5 +1,10 @@
 import { describe, it, expect } from 'vitest';
-import { encryptToken, decryptToken, createOAuthState, verifyOAuthState } from '../src/utils/crypto.js';
+import {
+  encryptToken,
+  decryptToken,
+  createOAuthState,
+  verifyOAuthState,
+} from '../src/utils/crypto.js';
 
 describe('Crypto Utilities', () => {
   it('should encrypt and decrypt access token properly', () => {

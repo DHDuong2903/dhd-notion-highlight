@@ -78,5 +78,6 @@ Welcome to the **Notion Highlight Sync** beta release! This guide walks you thro
 ## 🛠️ Feedback & Bug Reporting
 
 Found an issue or have a feature request?
+
 - File an issue on GitHub or reach out to the project maintainer.
 - Include your browser version and the URL of the webpage where the issue occurred.

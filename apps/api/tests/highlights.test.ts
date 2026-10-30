@@ -56,7 +56,8 @@ describe('Highlight API Endpoints', () => {
   });
 
   describe('POST /api/highlights & Source Grouping', () => {
-    const articleUrl = 'https://techcrunch.com/2026/01/01/ai-trends/?utm_source=twitter&utm_medium=social#part1';
+    const articleUrl =
+      'https://techcrunch.com/2026/01/01/ai-trends/?utm_source=twitter&utm_medium=social#part1';
     let firstSourceId: string;
     let firstHighlightId: string;
     const key1 = randomUUID();
@@ -87,7 +88,8 @@ describe('Highlight API Endpoints', () => {
 
     it('should group 2nd highlight from same URL (different query params) under the same Source', async () => {
       // Different tracking params and hash, but same canonical URL
-      const differentVariantUrl = 'https://techcrunch.com/2026/01/01/ai-trends/?ref=newsletter#conclusion';
+      const differentVariantUrl =
+        'https://techcrunch.com/2026/01/01/ai-trends/?ref=newsletter#conclusion';
       const key2 = randomUUID();
 
       const res = await app.inject({

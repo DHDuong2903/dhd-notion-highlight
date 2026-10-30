@@ -1035,3 +1035,19 @@ MVP is ready when:
 - Failed sync is reported correctly.
 - Duplicate requests do not create duplicate highlights.
 - Extension can be installed and used by beta users.
+
+---
+
+# 6. Post-MVP Roadmap (Phases 6–11)
+
+Chi tiết chiến lược và kế hoạch mở rộng hậu MVP được tài liệu hóa chi tiết tại:
+👉 **[Post-MVP Master Roadmap](file:///d:/dhd/notion-highlight/docs/roadmap/post-mvp-roadmap.md)**
+
+### Danh sách các giai đoạn tiếp theo:
+
+1. **[Phase 6 — Analytics & Error Tracking Foundation](file:///d:/dhd/notion-highlight/docs/roadmap/phase-6-analytics-error-tracking.md)** (P0): Triển khai PostHog event taxonomy, Sentry error monitoring và data sanitization. Phân hệ Feedback tạm hoãn đến sau khi vận hành production.
+2. **[Phase 7 — Landing Page & Product Validation](file:///d:/dhd/notion-highlight/docs/roadmap/phase-7-landing-page-validation.md)** (P0): Xây dựng website giới thiệu core workflow gom nhóm trích dẫn, thu thập Waitlist và survey nhu cầu.
+3. **[Phase 8 — Google Login & Account UX](file:///d:/dhd/notion-highlight/docs/roadmap/phase-8-google-login-account.md)** (P1): Đăng nhập 1-click Google OAuth và hoàn thiện màn hình quản lý tài khoản/database.
+4. **[Phase 9 — Production Readiness](file:///d:/dhd/notion-highlight/docs/roadmap/phase-9-production-readiness.md)** (P0): Hạ tầng Cloud, Managed Database, HTTPS custom domain, bảo mật isolation, logging và văn bản pháp lý.
+5. **[Phase 10 — Chrome Web Store Release & Closed Beta](file:///d:/dhd/notion-highlight/docs/roadmap/phase-10-chrome-release-beta.md)** (P0): Đóng gói extension, vượt qua xét duyệt của Chrome Web Store và khởi động Closed Beta với 5–10 người dùng thật.
+6. **[Phase 11 — Post-Beta Product Decisions](file:///d:/dhd/notion-highlight/docs/roadmap/phase-11-post-beta-decisions.md)** (P1): Dựa trên dữ liệu retention và phân bổ usage thực tế để chốt Free Quota, chính sách giá Pro và tích hợp nền tảng mới (Obsidian/Readwise/AI).

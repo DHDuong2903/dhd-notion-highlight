@@ -97,9 +97,7 @@ export const notionRoutes: FastifyPluginAsync = async (fastify) => {
     try {
       const clientId = process.env.NOTION_CLIENT_ID || env.NOTION_CLIENT_ID;
       const clientSecret = process.env.NOTION_CLIENT_SECRET || env.NOTION_CLIENT_SECRET;
-      const basicAuth = Buffer.from(
-        `${clientId}:${clientSecret}`,
-      ).toString('base64');
+      const basicAuth = Buffer.from(`${clientId}:${clientSecret}`).toString('base64');
 
       const tokenRes = await fetch('https://api.notion.com/v1/oauth/token', {
         method: 'POST',
@@ -352,52 +350,56 @@ export const notionRoutes: FastifyPluginAsync = async (fastify) => {
   });
 
   // POST /api/notion/database/create — Auto-create or link custom/default database
-  fastify.post('/api/notion/database/create', { preHandler: requireAuth }, async (request, reply) => {
-    const sessionUser = request.sessionUser!;
+  fastify.post(
+    '/api/notion/database/create',
+    { preHandler: requireAuth },
+    async (request, reply) => {
+      const sessionUser = request.sessionUser!;
 
-    const parseResult = createDatabaseSchema.safeParse(request.body || {});
-    const customTitle = parseResult.success ? parseResult.data.title : undefined;
+      const parseResult = createDatabaseSchema.safeParse(request.body || {});
+      const customTitle = parseResult.success ? parseResult.data.title : undefined;
 
-    const connection = await prisma.notionConnection.findUnique({
-      where: { userId: sessionUser.id },
-    });
-
-    if (!connection) {
-      return reply.status(400).send({
-        error: {
-          code: AppErrorCode.NOTION_NOT_CONNECTED,
-          message: 'Notion is not connected. Please connect your Notion account first.',
-        },
-      });
-    }
-
-    try {
-      const token = decryptToken(connection.accessTokenEncrypted);
-      const notion = new NotionService({ auth: token });
-
-      const newDb = await notion.createDefaultDatabase(customTitle);
-
-      // Automatically set this as the active database
-      await prisma.notionConnection.update({
+      const connection = await prisma.notionConnection.findUnique({
         where: { userId: sessionUser.id },
-        data: { databaseId: newDb.id },
       });
 
-      return reply.status(201).send({
-        success: true,
-        databaseId: newDb.id,
-        databaseTitle: newDb.title,
-        alreadyExisted: !!newDb.alreadyExisted,
-      });
-    } catch (err: any) {
-      return reply.status(err?.statusCode || 500).send({
-        error: {
-          code: err?.code || AppErrorCode.NOTION_API_ERROR,
-          message: err?.message || 'Failed to setup Notion database',
-        },
-      });
-    }
-  });
+      if (!connection) {
+        return reply.status(400).send({
+          error: {
+            code: AppErrorCode.NOTION_NOT_CONNECTED,
+            message: 'Notion is not connected. Please connect your Notion account first.',
+          },
+        });
+      }
+
+      try {
+        const token = decryptToken(connection.accessTokenEncrypted);
+        const notion = new NotionService({ auth: token });
+
+        const newDb = await notion.createDefaultDatabase(customTitle);
+
+        // Automatically set this as the active database
+        await prisma.notionConnection.update({
+          where: { userId: sessionUser.id },
+          data: { databaseId: newDb.id },
+        });
+
+        return reply.status(201).send({
+          success: true,
+          databaseId: newDb.id,
+          databaseTitle: newDb.title,
+          alreadyExisted: !!newDb.alreadyExisted,
+        });
+      } catch (err: any) {
+        return reply.status(err?.statusCode || 500).send({
+          error: {
+            code: err?.code || AppErrorCode.NOTION_API_ERROR,
+            message: err?.message || 'Failed to setup Notion database',
+          },
+        });
+      }
+    },
+  );
 
   // DELETE /api/notion/connection — Disconnect Notion
   fastify.delete('/api/notion/connection', { preHandler: requireAuth }, async (request, reply) => {

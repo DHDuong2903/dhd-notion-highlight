@@ -70,7 +70,9 @@ export const App: React.FC = () => {
   const [isSubmittingAuth, setIsSubmittingAuth] = useState(false);
 
   // System & Highlights State
-  const [backendStatus, setBackendStatus] = useState<'checking' | 'connected' | 'disconnected'>('checking');
+  const [backendStatus, setBackendStatus] = useState<'checking' | 'connected' | 'disconnected'>(
+    'checking',
+  );
   const [highlights, setHighlights] = useState<HighlightItem[]>([]);
   const [isLoadingHighlights, setIsLoadingHighlights] = useState(false);
 
@@ -360,8 +362,13 @@ export const App: React.FC = () => {
       {/* Loading initial session */}
       {isLoadingUser ? (
         <div className="card" style={{ textAlign: 'center', padding: '24px 10px' }}>
-          <span className="pulse-dot" style={{ width: '8px', height: '8px', margin: '0 auto 8px' }} />
-          <p style={{ color: 'var(--text-secondary)', fontSize: '12px' }}>Connecting to session...</p>
+          <span
+            className="pulse-dot"
+            style={{ width: '8px', height: '8px', margin: '0 auto 8px' }}
+          />
+          <p style={{ color: 'var(--text-secondary)', fontSize: '12px' }}>
+            Connecting to session...
+          </p>
         </div>
       ) : user ? (
         /* Authenticated View */
@@ -403,7 +410,11 @@ export const App: React.FC = () => {
                 <p style={{ fontSize: '11px', color: 'var(--text-secondary)' }}>
                   Connect your Notion workspace to save highlights.
                 </p>
-                <button onClick={handleConnectNotion} className="btn notion-btn" style={{ padding: '7px 12px' }}>
+                <button
+                  onClick={handleConnectNotion}
+                  className="btn notion-btn"
+                  style={{ padding: '7px 12px' }}
+                >
                   Connect Notion Workspace
                 </button>
               </div>
@@ -430,8 +441,16 @@ export const App: React.FC = () => {
                     <div className="custom-select-dropdown">
                       <div className="custom-select-list">
                         {databases.length === 0 ? (
-                          <div style={{ padding: '8px', color: 'var(--text-muted)', fontSize: '11px', textAlign: 'center' }}>
-                            No accessible databases found. Make sure you shared a database with the integration in Notion.
+                          <div
+                            style={{
+                              padding: '8px',
+                              color: 'var(--text-muted)',
+                              fontSize: '11px',
+                              textAlign: 'center',
+                            }}
+                          >
+                            No accessible databases found. Make sure you shared a database with the
+                            integration in Notion.
                           </div>
                         ) : (
                           databases.map((db) => {
@@ -442,13 +461,31 @@ export const App: React.FC = () => {
                                 className={`custom-select-item ${isSelected ? 'selected' : ''}`}
                                 onClick={() => handleSelectDatabase(db.id)}
                               >
-                                <div style={{ display: 'flex', alignItems: 'center', gap: '8px', overflow: 'hidden' }}>
+                                <div
+                                  style={{
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    gap: '8px',
+                                    overflow: 'hidden',
+                                  }}
+                                >
                                   <Database size={12} style={{ opacity: 0.7, flexShrink: 0 }} />
-                                  <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                                  <span
+                                    style={{
+                                      overflow: 'hidden',
+                                      textOverflow: 'ellipsis',
+                                      whiteSpace: 'nowrap',
+                                    }}
+                                  >
                                     {db.title}
                                   </span>
                                 </div>
-                                {isSelected && <Check size={13} style={{ color: 'var(--accent)', flexShrink: 0 }} />}
+                                {isSelected && (
+                                  <Check
+                                    size={13}
+                                    style={{ color: 'var(--accent)', flexShrink: 0 }}
+                                  />
+                                )}
                               </div>
                             );
                           })
@@ -479,7 +516,16 @@ export const App: React.FC = () => {
           </section>
 
           {/* Highlights List Card — Lower z-index so dropdown always overlays */}
-          <section className="card" style={{ flex: 1, display: 'flex', flexDirection: 'column', position: 'relative', zIndex: 1 }}>
+          <section
+            className="card"
+            style={{
+              flex: 1,
+              display: 'flex',
+              flexDirection: 'column',
+              position: 'relative',
+              zIndex: 1,
+            }}
+          >
             <div className="card-title">
               <div className="card-title-left">
                 <Layers size={12} />
@@ -512,7 +558,10 @@ export const App: React.FC = () => {
                   <div key={item.id} className="highlight-item">
                     <div className="highlight-snippet">&quot;{item.content}&quot;</div>
                     <div className="highlight-meta">
-                      <span className="highlight-source" title={item.source?.title || item.source?.canonicalUrl}>
+                      <span
+                        className="highlight-source"
+                        title={item.source?.title || item.source?.canonicalUrl}
+                      >
                         <FileText size={10} style={{ display: 'inline', marginRight: '3px' }} />
                         {item.source?.title || 'Article'}
                       </span>
@@ -538,7 +587,11 @@ export const App: React.FC = () => {
                         )}
                         <span
                           className={`status-badge ${
-                            item.status === 'SYNCED' ? 'ok' : item.status === 'FAILED' ? 'error' : 'pending'
+                            item.status === 'SYNCED'
+                              ? 'ok'
+                              : item.status === 'FAILED'
+                                ? 'error'
+                                : 'pending'
                           }`}
                           style={{ fontSize: '8px', padding: '1px 4px' }}
                         >
@@ -616,7 +669,12 @@ export const App: React.FC = () => {
               </div>
             </div>
 
-            <button type="submit" className="btn" disabled={isSubmittingAuth} style={{ marginTop: '4px' }}>
+            <button
+              type="submit"
+              className="btn"
+              disabled={isSubmittingAuth}
+              style={{ marginTop: '4px' }}
+            >
               {isSubmittingAuth
                 ? 'Please wait...'
                 : authMode === 'login'

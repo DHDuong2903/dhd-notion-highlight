@@ -181,7 +181,9 @@ chrome.contextMenus.onClicked.addListener(async (info, tab) => {
 
     setBadge('OK', '#10b981', 3500);
 
-    const groupInfo = result.isNewSource ? 'Created new Notion page' : 'Grouped into existing Notion page';
+    const groupInfo = result.isNewSource
+      ? 'Created new Notion page'
+      : 'Grouped into existing Notion page';
     const notifId = `highlight-${Date.now()}`;
 
     // Desktop notification (click to open Notion)

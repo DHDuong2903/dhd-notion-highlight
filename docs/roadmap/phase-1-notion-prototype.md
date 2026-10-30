@@ -11,6 +11,7 @@ Verify that the Notion API supports creating pages and appending multiple highli
 ## Epic P1-E1 — Notion API Setup (Completed)
 
 ### Task P1-E1-T1 — Create Notion integration
+
 - **Status:** ✅ Completed
 - **Description:** Configure Notion internal integration, test database, and local environment variables.
 - **Acceptance Criteria Verification:**
@@ -19,6 +20,7 @@ Verify that the Notion API supports creating pages and appending multiple highli
   - [x] Connection verification supported via `testConnection()` and `GET /api/prototype/status`.
 
 ### Task P1-E1-T2 — Implement Notion API client
+
 - **Status:** ✅ Completed
 - **Description:** Create Notion API client module with structured error handling.
 - **Acceptance Criteria Verification:**
@@ -30,6 +32,7 @@ Verify that the Notion API supports creating pages and appending multiple highli
 ## Epic P1-E2 — Create Notion Page (Completed)
 
 ### Task P1-E2-T1 — Create page in database
+
 - **Status:** ✅ Completed
 - **Description:** Create a page in the Notion database with Title, URL, and initial highlight.
 - **Acceptance Criteria Verification:**
@@ -37,6 +40,7 @@ Verify that the Notion API supports creating pages and appending multiple highli
   - [x] Page creation tested with mock and live options.
 
 ### Task P1-E2-T2 — Append highlight block
+
 - **Status:** ✅ Completed
 - **Description:** Append selected text as a quote or paragraph block to the page body.
 - **Acceptance Criteria Verification:**
@@ -48,6 +52,7 @@ Verify that the Notion API supports creating pages and appending multiple highli
 ## Epic P1-E3 — Source Grouping Prototype (Completed)
 
 ### Task P1-E3-T1 — Implement source lookup
+
 - **Status:** ✅ Completed
 - **Description:** Search Notion database for an existing page matching the source URL.
 - **Acceptance Criteria Verification:**
@@ -55,6 +60,7 @@ Verify that the Notion API supports creating pages and appending multiple highli
   - [x] Returns page ID when found; returns `null` when no matching source exists.
 
 ### Task P1-E3-T2 — Implement source grouping
+
 - **Status:** ✅ Completed
 - **Description:** Create a page for a new source, or append highlight to an existing source.
 - **Acceptance Criteria Verification:**
@@ -63,6 +69,7 @@ Verify that the Notion API supports creating pages and appending multiple highli
   - [x] Verified via automated tests: Saving 2 highlights from same canonical URL appends to one page (`isNewSource: false`). Saving from a different URL creates a new page (`isNewSource: true`).
 
 ### Task P1-E3-T3 — Validate Notion API behavior
+
 - **Status:** ✅ Completed
 - **Description:** Test error conditions (invalid token, inaccessible DB, rate limits, append failure).
 - **Acceptance Criteria Verification:**

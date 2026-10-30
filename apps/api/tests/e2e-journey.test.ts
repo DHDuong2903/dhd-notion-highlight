@@ -77,7 +77,8 @@ describe('Phase 5 — End-to-End User Journey & Reliability Suite', () => {
   // EPIC P5-E1: Integration Testing Journey
   // ==========================================
   describe('Epic P5-E1: Core Highlight Sync Journey', () => {
-    const articleUrl = 'https://engineering.atspotify.com/2026/01/system-architecture/?utm_source=twitter#intro';
+    const articleUrl =
+      'https://engineering.atspotify.com/2026/01/system-architecture/?utm_source=twitter#intro';
     let firstSourceId: string;
     let firstHighlightId: string;
     const key1 = randomUUID();
@@ -130,10 +131,13 @@ describe('Phase 5 — End-to-End User Journey & Reliability Suite', () => {
 
     it('P5-E1-T2: Existing source flow — second highlight on same canonical URL appends block without creating new page', async () => {
       // Different query string, same canonical URL
-      const variantUrl = 'https://engineering.atspotify.com/2026/01/system-architecture/?utm_campaign=newsletter#summary';
+      const variantUrl =
+        'https://engineering.atspotify.com/2026/01/system-architecture/?utm_campaign=newsletter#summary';
       const key2 = randomUUID();
 
-      const appendBlockSpy = vi.spyOn(NotionService.prototype, 'appendHighlight').mockResolvedValueOnce();
+      const appendBlockSpy = vi
+        .spyOn(NotionService.prototype, 'appendHighlight')
+        .mockResolvedValueOnce();
       const createPageSpy = vi.spyOn(NotionService.prototype, 'createPage');
 
       const res = await app.inject({
@@ -215,7 +219,7 @@ describe('Phase 5 — End-to-End User Journey & Reliability Suite', () => {
 
       // Simulate Notion API token revoked or connection error
       vi.spyOn(NotionService.prototype, 'createPage').mockRejectedValueOnce(
-        new Error('Unauthorized: Notion token has been revoked or expired')
+        new Error('Unauthorized: Notion token has been revoked or expired'),
       );
 
       const res = await app.inject({

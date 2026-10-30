@@ -114,7 +114,11 @@ export class NotionService {
 
       return (response.results as any[]).map((db) => {
         const titleArr = db.title || [];
-        const title = titleArr.map((t: any) => t.plain_text || '').join('').trim() || 'Untitled Database';
+        const title =
+          titleArr
+            .map((t: any) => t.plain_text || '')
+            .join('')
+            .trim() || 'Untitled Database';
         // In Notion v5 data_source objects, the real database ID is in parent.database_id
         const databaseId = db.parent?.type === 'database_id' ? db.parent.database_id : db.id;
         return {
@@ -134,7 +138,12 @@ export class NotionService {
     try {
       const db = await this.client.databases.retrieve({ database_id: databaseId });
       const titleArr = (db as any).title || [];
-      return titleArr.map((t: any) => t.plain_text || '').join('').trim() || 'Untitled Database';
+      return (
+        titleArr
+          .map((t: any) => t.plain_text || '')
+          .join('')
+          .trim() || 'Untitled Database'
+      );
     } catch {
       return 'Selected Database';
     }
