@@ -44,4 +44,3 @@ export const telemetryRoutes: FastifyPluginAsync = async (fastify) => {
     return reply.status(200).send({ success: true });
   });
 };
-

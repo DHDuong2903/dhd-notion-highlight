@@ -33,9 +33,11 @@ export interface ApiError {
 }
 
 export const DEFAULT_BACKEND_URL = 'http://localhost:3001';
+export const DEFAULT_WEB_URL = 'http://localhost:3000';
 
 class ApiClient {
   private baseUrl: string = DEFAULT_BACKEND_URL;
+  private webUrl: string = DEFAULT_WEB_URL;
 
   public async getBaseUrl(): Promise<string> {
     if (typeof chrome !== 'undefined' && chrome.storage?.local) {
@@ -51,6 +53,23 @@ class ApiClient {
     this.baseUrl = url.replace(/\/+$/, '');
     if (typeof chrome !== 'undefined' && chrome.storage?.local) {
       await chrome.storage.local.set({ backendUrl: this.baseUrl });
+    }
+  }
+
+  public async getWebUrl(): Promise<string> {
+    if (typeof chrome !== 'undefined' && chrome.storage?.local) {
+      const stored = await chrome.storage.local.get(['webUrl']);
+      if (stored.webUrl) {
+        this.webUrl = stored.webUrl;
+      }
+    }
+    return this.webUrl;
+  }
+
+  public async setWebUrl(url: string): Promise<void> {
+    this.webUrl = url.replace(/\/+$/, '');
+    if (typeof chrome !== 'undefined' && chrome.storage?.local) {
+      await chrome.storage.local.set({ webUrl: this.webUrl });
     }
   }
 

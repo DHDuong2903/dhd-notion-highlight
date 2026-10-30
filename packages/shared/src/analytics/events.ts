@@ -10,6 +10,9 @@ export const AnalyticsEvents = {
   HIGHLIGHT_SAVED: 'highlight_saved',
   HIGHLIGHT_SAVE_FAILED: 'highlight_save_failed',
   HISTORY_OPENED: 'history_opened',
+  WAITLIST_SUBMITTED: 'waitlist_submitted',
+  SURVEY_SUBMITTED: 'survey_submitted',
+  LANDING_CTA_CLICKED: 'landing_cta_clicked',
 } as const;
 
 export type AnalyticsEventName = (typeof AnalyticsEvents)[keyof typeof AnalyticsEvents];
@@ -48,6 +51,21 @@ export interface HistoryOpenedPayload {
   itemsCount: number;
 }
 
+export interface WaitlistSubmittedPayload {
+  source: string;
+  hasSurvey: boolean;
+}
+
+export interface SurveySubmittedPayload {
+  currentTools?: string;
+  destinations?: string;
+  willingToPay?: string;
+}
+
+export interface LandingCtaClickedPayload {
+  location: string;
+}
+
 export type AnalyticsEventPayloadMap = {
   [AnalyticsEvents.USER_REGISTERED]: UserRegisteredPayload;
   [AnalyticsEvents.USER_LOGGED_IN]: UserLoggedInPayload;
@@ -56,6 +74,9 @@ export type AnalyticsEventPayloadMap = {
   [AnalyticsEvents.HIGHLIGHT_SAVED]: HighlightSavedPayload;
   [AnalyticsEvents.HIGHLIGHT_SAVE_FAILED]: HighlightSaveFailedPayload;
   [AnalyticsEvents.HISTORY_OPENED]: HistoryOpenedPayload;
+  [AnalyticsEvents.WAITLIST_SUBMITTED]: WaitlistSubmittedPayload;
+  [AnalyticsEvents.SURVEY_SUBMITTED]: SurveySubmittedPayload;
+  [AnalyticsEvents.LANDING_CTA_CLICKED]: LandingCtaClickedPayload;
 };
 
 /**

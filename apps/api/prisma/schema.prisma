@@ -95,3 +95,16 @@ model SyncLog {
   user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
   highlight Highlight @relation(fields: [highlightId], references: [id], onDelete: Cascade)
 }
+
+model WaitlistEntry {
+  id           String   @id @default(cuid())
+  email        String   @unique
+  currentTools String?
+  useNotion    Boolean  @default(true)
+  destinations String?
+  willingToPay String?
+  feedback     String?  @db.Text
+  source       String   @default("landing_page")
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+}

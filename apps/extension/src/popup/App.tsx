@@ -16,6 +16,7 @@ import {
   Sun,
   Moon,
   ShieldCheck,
+  Globe,
 } from 'lucide-react';
 import { api, type UserProfile, type HighlightItem } from '../api/client.js';
 import { AnalyticsEvents } from '@notion-highlight/shared';
@@ -266,6 +267,20 @@ export const App: React.FC = () => {
     }
   };
 
+  // Open Web App Dashboard & Portal
+  const handleOpenWebApp = async () => {
+    try {
+      const url = await api.getWebUrl();
+      if (typeof chrome !== 'undefined' && chrome.tabs) {
+        chrome.tabs.create({ url });
+      } else {
+        window.open(url, '_blank');
+      }
+    } catch {
+      window.open('http://localhost:3000', '_blank');
+    }
+  };
+
   // Connect Notion OAuth
   const handleConnectNotion = async () => {
     setNotionMsg(null);
@@ -339,7 +354,12 @@ export const App: React.FC = () => {
     <div className="popup-container" data-theme={effectiveTheme}>
       {/* Header with Logo, Theme toggle, and User info */}
       <header className="header">
-        <div className="logo-group">
+        <div
+          className="logo-group"
+          onClick={handleOpenWebApp}
+          style={{ cursor: 'pointer' }}
+          title="Open Web Dashboard & Portal"
+        >
           <div className="logo-badge">
             <img
               src="icons/logo.png"
@@ -365,6 +385,24 @@ export const App: React.FC = () => {
         </div>
 
         <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+          {/* Open Web App Dashboard Button */}
+          <button
+            onClick={handleOpenWebApp}
+            className="btn-icon"
+            style={{
+              padding: '3px 6px',
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: '4px',
+              fontSize: '11px',
+              color: 'var(--accent)',
+            }}
+            title="Open Web Dashboard & Plans"
+          >
+            <Globe size={13} />
+            <span style={{ fontSize: '10px', fontWeight: 600 }}>Web</span>
+          </button>
+
           {/* Theme Toggle Button */}
           <button
             onClick={handleToggleTheme}
@@ -647,6 +685,35 @@ export const App: React.FC = () => {
                 ))}
               </div>
             )}
+
+            {/* Link to Full Web Dashboard */}
+            <div
+              style={{
+                marginTop: '10px',
+                paddingTop: '8px',
+                borderTop: '1px solid var(--border-color)',
+                textAlign: 'center',
+              }}
+            >
+              <button
+                onClick={handleOpenWebApp}
+                style={{
+                  background: 'transparent',
+                  border: 'none',
+                  color: 'var(--accent)',
+                  fontSize: '11px',
+                  fontWeight: 600,
+                  cursor: 'pointer',
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: '4px',
+                }}
+                title="Open Web Dashboard for full view & plans"
+              >
+                <span>Open Web Dashboard for full view & plans</span>
+                <ExternalLink size={11} />
+              </button>
+            </div>
           </section>
         </>
       ) : (

@@ -9,6 +9,7 @@ import { authRoutes } from './routes/auth.js';
 import { highlightRoutes } from './routes/highlights.js';
 import { notionRoutes } from './routes/notion.js';
 import { telemetryRoutes } from './routes/telemetry.js';
+import { waitlistRoutes } from './routes/waitlist.js';
 import { authPlugin } from './middleware/auth.js';
 import { env } from './config/env.js';
 import { serverErrorTracker } from './lib/errorTracker.js';
@@ -63,6 +64,7 @@ export function buildApp(opts: FastifyServerOptions = {}): FastifyInstance {
   app.register(highlightRoutes);
   app.register(notionRoutes);
   app.register(telemetryRoutes);
+  app.register(waitlistRoutes);
 
   return app;
 }
